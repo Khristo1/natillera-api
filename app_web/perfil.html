@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Mi Perfil</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <button class="btn-back" onclick="history.back()">← Volver</button>
+            <h2>Mi Perfil</h2>
+        </div>
+        
+        <div class="perfil-card">
+            <div class="perfil-field"><span class="perfil-label">Código</span><span class="perfil-value" id="codigo">-</span></div>
+            <div class="perfil-field"><span class="perfil-label">Nombre</span><span class="perfil-value" id="nombre">-</span></div>
+            <div class="perfil-field"><span class="perfil-label">Cédula</span><span class="perfil-value" id="cedula">-</span></div>
+            <div class="perfil-field"><span class="perfil-label">Celular</span><span class="perfil-value" id="celular">-</span></div>
+            <div class="perfil-field"><span class="perfil-label">Correo</span><span class="perfil-value" id="correo">-</span></div>
+        </div>
+        
+        <button class="btn-logout" onclick="cerrarSesion()">Cerrar Sesión</button>
+    </div>
+    
+    <div class="bottom-nav">
+        <div class="nav-item" onclick="window.location.href='dashboard.html'">🏠</div>
+        <div class="nav-item" onclick="window.location.href='aportes.html'">💰</div>
+        <div class="nav-item" onclick="window.location.href='prestamos.html'">🏦</div>
+        <div class="nav-item" onclick="window.location.href='actividades.html'">🎉</div>
+        <div class="nav-item active">👤</div>
+    </div>
+    
+    <script>
+        const socio = JSON.parse(localStorage.getItem('socio'));
+        if (!socio) window.location.href = 'index.html';
+        
+        document.getElementById('codigo').textContent = socio.codigo;
+        document.getElementById('nombre').textContent = `${socio.nombre} ${socio.apellido}`;
+        document.getElementById('cedula').textContent = socio.cedula;
+        document.getElementById('celular').textContent = socio.celular;
+        document.getElementById('correo').textContent = socio.correo || 'No registrado';
+        
+        function cerrarSesion() {
+            localStorage.removeItem('socio');
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

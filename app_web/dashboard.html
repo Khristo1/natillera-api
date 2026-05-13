@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Inicio - Natillera</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Hola, <span id="socioNombre">Cargando...</span></h2>
+            <p class="fecha" id="fechaActual"></p>
+        </div>
+        
+        <div class="cards-grid">
+            <div class="card">
+                <div class="card-icon">💰</div>
+                <div class="card-content">
+                    <span class="card-label">Total Aportado</span>
+                    <span class="card-value" id="totalAportes">$0</span>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">🏦</div>
+                <div class="card-content">
+                    <span class="card-label">Saldo Préstamo</span>
+                    <span class="card-value" id="saldoPrestamo">$0</span>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">📅</div>
+                <div class="card-content">
+                    <span class="card-label">Cuotas Pendientes</span>
+                    <span class="card-value" id="cuotasPendientes">0</span>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">⚖️</div>
+                <div class="card-content">
+                    <span class="card-label">Mi Balance</span>
+                    <span class="card-value" id="balance">$0</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="menu-grid">
+            <div class="menu-item" onclick="window.location.href='aportes.html'">
+                <div class="menu-icon">💰</div>
+                <span>Aportes</span>
+            </div>
+            <div class="menu-item" onclick="window.location.href='prestamos.html'">
+                <div class="menu-icon">🏦</div>
+                <span>Préstamos</span>
+            </div>
+            <div class="menu-item" onclick="window.location.href='actividades.html'">
+                <div class="menu-icon">🎉</div>
+                <span>Actividades</span>
+            </div>
+            <div class="menu-item" onclick="window.location.href='perfil.html'">
+                <div class="menu-icon">👤</div>
+                <span>Perfil</span>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>📢 Próximos Pagos</h3>
+            <div id="recordatorios" class="recordatorios-list">
+                <div class="loading">Cargando...</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bottom-nav">
+        <div class="nav-item active">🏠 Inicio</div>
+        <div class="nav-item" onclick="window.location.href='aportes.html'">💰 Aportes</div>
+        <div class="nav-item" onclick="window.location.href='prestamos.html'">🏦 Préstamos</div>
+        <div class="nav-item" onclick="window.location.href='actividades.html'">🎉</div>
+        <div class="nav-item" onclick="window.location.href='perfil.html'">👤 Perfil</div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://10.128.48.241:5000/api';
+        const socio = JSON.parse(localStorage.getItem('socio'));
+        if (!socio) window.location.href = 'index.html';
+        
+        document.getElementById('socioNombre').textContent = socio.nombre;
+        document.getElementById('fechaActual').textContent = new Date().toLocaleDateString('es-CO');
+        
+        async function cargarDashboard() {
+            try {
+                const res = await fetch(`${API_URL}/dashboard/${socio.id}`);
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('totalAportes').textContent = formatearMoneda(data.dashboard.total_aportes);
+                    document.getElementById('saldoPrestamo').textContent = formatearMoneda(data.dashboard.total_prestamos);
+                    document.getElementById('balance').textContent = formatearMoneda(data.dashboard.balance);
+                    document.getElementById('cuotasPendientes').textContent = data.dashboard.cuotas_pendientes;
+                }
+            } catch (error) { console.error(error); }
+        }
+        
+        async function cargarRecordatorios() {
+            try {
+                const res = await fetch(`${API_URL}/proximos_pagos/${socio.id}`);
+                const data = await res.json();
+                const container = document.getElementById('recordatorios');
+                if (data.recordatorios?.length) {
+                    container.innerHTML = data.recordatorios.map(r => `
+                        <div class="recordatorio-item">
+                            <div class="recordatorio-tipo ${r.tipo === 'Aporte' ? 'tipo-aporte' : 'tipo-prestamo'}">${r.tipo}</div>
+                            <div class="recordatorio-info">
+                                <strong>${r.mes ? `${r.mes} ${r.año}` : `Préstamo`}</strong>
+                                <span>Monto: ${formatearMoneda(r.monto)}</span>
+                                <span class="fecha-limite">Vence: ${formatearFecha(r.fechaLimite)}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="empty-state">✨ No hay pagos pendientes</div>';
+                }
+            } catch (error) { console.error(error); }
+        }
+        
+        function formatearMoneda(v) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v); }
+        function formatearFecha(f) { return new Date(f).toLocaleDateString('es-CO'); }
+        
+        cargarDashboard();
+        cargarRecordatorios();
+    </script>
+</body>
+</html>

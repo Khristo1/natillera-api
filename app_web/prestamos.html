@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Mis Préstamos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <button class="btn-back" onclick="history.back()">← Volver</button>
+            <h2>Mis Préstamos</h2>
+        </div>
+        
+        <div id="prestamosContainer" class="recordatorios-list">
+            <div class="loading">Cargando...</div>
+        </div>
+    </div>
+    
+    <div class="bottom-nav">
+        <div class="nav-item" onclick="window.location.href='dashboard.html'">🏠</div>
+        <div class="nav-item" onclick="window.location.href='aportes.html'">💰</div>
+        <div class="nav-item active">🏦</div>
+        <div class="nav-item" onclick="window.location.href='actividades.html'">🎉</div>
+        <div class="nav-item" onclick="window.location.href='perfil.html'">👤</div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://10.128.48.241:5000/api';
+        const socio = JSON.parse(localStorage.getItem('socio'));
+        if (!socio) window.location.href = 'index.html';
+        
+        async function cargarPrestamos() {
+            try {
+                const res = await fetch(`${API_URL}/prestamos/${socio.id}`);
+                const data = await res.json();
+                const container = document.getElementById('prestamosContainer');
+                
+                if (data.prestamos?.length) {
+                    container.innerHTML = data.prestamos.map(p => `
+                        <div class="section">
+                            <div style="display: flex; justify-content: space-between;">
+                                <strong>Préstamo #${p.id}</strong>
+                                <span class="${p.estado === 'activo' ? 'estado-pendiente' : 'estado-pagado'}">${p.estado}</span>
+                            </div>
+                            <div class="perfil-field"><span>Monto:</span><span>${formatearMoneda(p.monto)}</span></div>
+                            <div class="perfil-field"><span>Interés:</span><span>${p.interes}% mensual</span></div>
+                            <div class="perfil-field"><span>Cuota:</span><span>${formatearMoneda(p.cuota_mensual)}</span></div>
+                            <div class="perfil-field"><span>Cuotas pagadas:</span><span>${p.cuotas_totales - p.cuotas_restantes} / ${p.cuotas_totales}</span></div>
+                            <div class="perfil-field"><span>Saldo:</span><span class="monto-negativo">${formatearMoneda(p.saldo_pendiente || p.monto)}</span></div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="empty-state">✨ No tienes préstamos activos</div>';
+                }
+            } catch (error) { console.error(error); }
+        }
+        
+        function formatearMoneda(v) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v); }
+        
+        cargarPrestamos();
+    </script>
+</body>
+</html>

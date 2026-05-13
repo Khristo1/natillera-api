@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Actividades</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <button class="btn-back" onclick="history.back()">← Volver</button>
+            <h2>Actividades</h2>
+        </div>
+        
+        <div class="section">
+            <h3>📅 Próximas Actividades</h3>
+            <div id="actividadesContainer" class="recordatorios-list">
+                <div class="loading">Cargando...</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h3>💰 Mis Pagos en Actividades</h3>
+            <div class="table-responsive">
+                <table id="tablaPagos">
+                    <thead><tr><th>Actividad</th><th>Monto</th><th>Fecha</th></tr></thead>
+                    <tbody><tr><td colspan="3" class="loading">Cargando...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bottom-nav">
+        <div class="nav-item" onclick="window.location.href='dashboard.html'">🏠</div>
+        <div class="nav-item" onclick="window.location.href='aportes.html'">💰</div>
+        <div class="nav-item" onclick="window.location.href='prestamos.html'">🏦</div>
+        <div class="nav-item active">🎉</div>
+        <div class="nav-item" onclick="window.location.href='perfil.html'">👤</div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://10.128.48.241:5000/api';
+        const socio = JSON.parse(localStorage.getItem('socio'));
+        if (!socio) window.location.href = 'index.html';
+        
+        async function cargarActividades() {
+            try {
+                const [actividadesRes, pagosRes] = await Promise.all([
+                    fetch(`${API_URL}/actividades`),
+                    fetch(`${API_URL}/actividades/pagos/${socio.id}`)
+                ]);
+                const actividades = await actividadesRes.json();
+                const pagos = await pagosRes.json();
+                
+                const container = document.getElementById('actividadesContainer');
+                if (actividades.actividades?.length) {
+                    container.innerHTML = actividades.actividades.map(a => `
+                        <div class="recordatorio-item">
+                            <div class="recordatorio-tipo tipo-aporte">${a.estado || 'Programada'}</div>
+                            <div class="recordatorio-info">
+                                <strong>${a.nombre}</strong>
+                                <span>${a.descripcion || ''}</span>
+                                <span>📅 ${formatearFecha(a.fecha)}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="empty-state">No hay actividades</div>';
+                }
+                
+                const tbody = document.querySelector('#tablaPagos tbody');
+                if (pagos.pagos?.length) {
+                    tbody.innerHTML = pagos.pagos.map(p => `
+                        <tr><td>${p.actividad}</td><td>${formatearMoneda(p.monto)}</td><td>${formatearFecha(p.fecha)}</td></tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No has pagado actividades</td></tr>';
+                }
+            } catch (error) { console.error(error); }
+        }
+        
+        function formatearMoneda(v) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v); }
+        function formatearFecha(f) { return new Date(f).toLocaleDateString('es-CO'); }
+        
+        cargarActividades();
+    </script>
+</body>
+</html>

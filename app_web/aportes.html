@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Mis Aportes</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <button class="btn-back" onclick="history.back()">← Volver</button>
+            <h2>Mis Aportes</h2>
+        </div>
+        
+        <div class="section">
+            <h3>Historial de Aportes</h3>
+            <div class="table-responsive">
+                <table id="tablaAportes">
+                    <thead><tr><th>Fecha</th><th>Mes/Año</th><th>Monto</th><th>Estado</th></tr></thead>
+                    <tbody><tr><td colspan="4" class="loading">Cargando...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="card" style="justify-content: space-between;">
+            <span>💰 Total Aportado</span>
+            <strong id="totalAportado">$0</strong>
+        </div>
+    </div>
+    
+    <div class="bottom-nav">
+        <div class="nav-item" onclick="window.location.href='dashboard.html'">🏠</div>
+        <div class="nav-item active">💰</div>
+        <div class="nav-item" onclick="window.location.href='prestamos.html'">🏦</div>
+        <div class="nav-item" onclick="window.location.href='actividades.html'">🎉</div>
+        <div class="nav-item" onclick="window.location.href='perfil.html'">👤</div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://10.128.48.241:5000/api';
+        const socio = JSON.parse(localStorage.getItem('socio'));
+        if (!socio) window.location.href = 'index.html';
+        
+        async function cargarAportes() {
+            try {
+                const [aportesRes, totalRes] = await Promise.all([
+                    fetch(`${API_URL}/aportes/${socio.id}`),
+                    fetch(`${API_URL}/aportes/total/${socio.id}`)
+                ]);
+                const aportes = await aportesRes.json();
+                const total = await totalRes.json();
+                
+                document.getElementById('totalAportado').textContent = formatearMoneda(total.total || 0);
+                
+                const tbody = document.querySelector('#tablaAportes tbody');
+                if (aportes.aportes?.length) {
+                    tbody.innerHTML = aportes.aportes.map(a => `
+                        <tr>
+                            <td>${formatearFecha(a.fecha)}</td>
+                            <td>${a.mes} ${a.año}</td>
+                            <td>${formatearMoneda(a.monto)}</td>
+                            <td class="${a.estado === 'pagado' ? 'estado-pagado' : 'estado-pendiente'}">${a.estado}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No hay aportes</td></tr>';
+                }
+            } catch (error) { console.error(error); }
+        }
+        
+        function formatearMoneda(v) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v); }
+        function formatearFecha(f) { return new Date(f).toLocaleDateString('es-CO'); }
+        
+        cargarAportes();
+    </script>
+</body>
+</html>

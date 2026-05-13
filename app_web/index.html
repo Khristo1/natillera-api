@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Natillera - Mi Cuenta</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="/manifest.json">
+</head>
+<body>
+    <div class="container">
+        <div class="login-card">
+            <div class="logo">
+                <div class="logo-circle">N</div>
+            </div>
+            <h1>Natillera Familiar</h1>
+            <p class="subtitle">Ingresa con tu código de socio</p>
+            
+            <form id="loginForm">
+                <div class="input-group">
+                    <label>Código de Socio</label>
+                    <input type="text" id="codigo" placeholder="Ej: SOC0001" autocomplete="off">
+                </div>
+                
+                <div class="input-group">
+                    <label>Número de Cédula</label>
+                    <input type="text" id="cedula" placeholder="Ej: 12345678" inputmode="numeric">
+                </div>
+                
+                <button type="submit" class="btn-primary">Iniciar Sesión</button>
+            </form>
+            
+            <div id="errorMsg" class="error-msg"></div>
+        </div>
+    </div>
+    
+    <script>
+        // IMPORTANTE: CAMBIA ESTA IP POR LA DE TU COMPUTADORA
+        const API_URL = 'http://10.128.48.241:5000/api';
+        
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const codigo = document.getElementById('codigo').value.trim();
+            const cedula = document.getElementById('cedula').value.trim();
+            const errorMsg = document.getElementById('errorMsg');
+            
+            if (!codigo || !cedula) {
+                errorMsg.textContent = 'Por favor complete todos los campos';
+                return;
+            }
+            
+            const btn = document.querySelector('button[type="submit"]');
+            const originalText = btn.textContent;
+            btn.textContent = 'Ingresando...';
+            btn.disabled = true;
+            errorMsg.textContent = '';
+            
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ codigo, cedula })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    localStorage.setItem('socio', JSON.stringify(data.socio));
+                    window.location.href = 'dashboard.html';
+                } else {
+                    errorMsg.textContent = data.message || 'Credenciales incorrectas';
+                }
+            } catch (error) {
+                errorMsg.textContent = 'Error de conexión. Verifique el servidor.';
+                console.error(error);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
