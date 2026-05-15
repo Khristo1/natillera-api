@@ -1,4 +1,3 @@
-# api/api_server.py
 import sys
 import os
 
@@ -7,13 +6,28 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from modulos.database import Database
+from datetime import datetime
 
 app = Flask(__name__, static_folder='../app_web', static_url_path='')
 CORS(app)
 
 db = Database()
 
-# ========== ENDPOINT TEMPORAL PARA CREAR SOCIO DE PRUEBA ==========
+# ==================== ARCHIVOS ESTÁTICOS ====================
+
+@app.route('/')
+def index():
+    return send_from_directory('../app_web', 'index.html')
+
+@app.route('/<path:filename>')
+def serve_static(filename):
+    allowed_extensions = ('.html', '.css', '.js', '.json', '.png', '.jpg', '.ico')
+    if any(filename.endswith(ext) for ext in allowed_extensions):
+        return send_from_directory('../app_web', filename)
+    return jsonify({'error': 'Not found'}), 404
+
+# ==================== ENDPOINT TEMPORAL ====================
+
 @app.route('/api/crear_socio_prueba', methods=['GET'])
 def crear_socio_prueba():
     try:
@@ -25,24 +39,6 @@ def crear_socio_prueba():
         return jsonify({"success": True, "message": "Socio de prueba creado"})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)})
-
-# ========== RESTO DE TUS ENDPOINTS (login, dashboard, etc.) ==========
-@app.route('/api/login', methods=['POST'])
-def login():
-
-# ==================== ARCHIVOS ESTÁTICOS ====================
-
-@app.route('/')
-def index():
-    return send_from_directory('../app_web', 'index.html')
-
-@app.route('/<path:filename>')
-def serve_static(filename):
-    """Servir cualquier archivo de la carpeta app_web"""
-    allowed_extensions = ('.html', '.css', '.js', '.json', '.png', '.jpg', '.ico')
-    if any(filename.endswith(ext) for ext in allowed_extensions):
-        return send_from_directory('../app_web', filename)
-    return jsonify({'error': 'Not found'}), 404
 
 # ==================== AUTENTICACION ====================
 
@@ -91,10 +87,7 @@ def get_aportes(socio_id):
 @app.route('/api/aportes/total/<int:socio_id>', methods=['GET'])
 def get_total_aportes(socio_id):
     total = db.fetch_one("SELECT SUM(monto) FROM aportes WHERE id_socio = ? AND estado = 'pagado'", (socio_id,))
-    # Verificar si total es None
-    if total is None or total[0] is None:
-        return jsonify({'success': True, 'total': 0})
-    return jsonify({'success': True, 'total': total[0]})
+    return jsonify({'success': True, 'total': total[0] if total[0] else 0})
 
 # ==================== PRESTAMOS ====================
 
@@ -107,11 +100,6 @@ def get_prestamos(socio_id):
         'cuotas_totales': p[4], 'cuotas_restantes': p[5], 'fecha': p[6],
         'saldo_pendiente': p[7] if p[7] else p[1], 'estado': p[8]
     } for p in prestamos]})
-
-@app.route('/api/prestamos/pagos/<int:prestamo_id>', methods=['GET'])
-def get_pagos_prestamo(prestamo_id):
-    pagos = db.fetch_all("SELECT id_pago, monto_pagado, fecha_pago, forma_pago FROM pagos_prestamo WHERE id_prestamo = ? ORDER BY fecha_pago DESC", (prestamo_id,))
-    return jsonify({'success': True, 'pagos': [{'id': p[0], 'monto': p[1], 'fecha': p[2], 'forma_pago': p[3]} for p in pagos]})
 
 # ==================== ACTIVIDADES ====================
 
@@ -147,11 +135,9 @@ def get_dashboard(socio_id):
     total_aportes = db.fetch_one("SELECT SUM(monto) FROM aportes WHERE id_socio = ? AND estado = 'pagado'", (socio_id,))
     total_prestamos = db.fetch_one("SELECT SUM(saldo_pendiente) FROM prestamos WHERE id_socio = ? AND estado = 'activo'", (socio_id,))
     cuotas_pendientes = db.fetch_one("SELECT SUM(cuotas_restantes) FROM prestamos WHERE id_socio = ? AND estado = 'activo'", (socio_id,))
-    
     aportes_total = total_aportes[0] if total_aportes and total_aportes[0] else 0
     prestamos_total = total_prestamos[0] if total_prestamos and total_prestamos[0] else 0
     cuotas_total = cuotas_pendientes[0] if cuotas_pendientes and cuotas_pendientes[0] else 0
-    
     return jsonify({'success': True, 'dashboard': {
         'total_aportes': aportes_total,
         'total_prestamos': prestamos_total,
