@@ -143,5 +143,17 @@ def get_dashboard(socio_id):
         'cuotas_pendientes': cuotas_total
     }})
 
+@app.route('/api/crear_socio_prueba', methods=['GET'])
+def crear_socio_prueba():
+    try:
+        db.execute("""
+            INSERT OR IGNORE INTO socios 
+            (codigo_socio, nombre, apellido, cedula, celular, estado) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, ("SOC0001", "Juan", "Perez", "91018352", "3001234567", "activo"))
+        return jsonify({"success": True, "message": "Socio de prueba creado"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
