@@ -10,9 +10,9 @@ class Database:
         Inicializa la conexión a la base de datos.
         Usa PostgreSQL si existe variable DATABASE_URL, sino usa SQLite.
         """
-        self.db_type = 'sqlite'
         self.connection = None
         self.cursor = None
+        self.db_type = 'sqlite'
         
         # Verificar si estamos en Render (con PostgreSQL)
         database_url = os.environ.get('DATABASE_URL')
@@ -22,13 +22,17 @@ class Database:
             self.db_type = 'postgresql'
             self.db_url = database_url
             print(f"[INFO] Conectando a PostgreSQL en la nube")
+            self.connect_postgresql()
         else:
             # Usar SQLite local
             self.db_type = 'sqlite'
-            self.db_path = self.get_default_db_path() if db_path == 'natillera.db' else db_path
+            if db_path == 'natillera.db':
+                self.db_path = self.get_default_db_path()
+            else:
+                self.db_path = db_path
             print(f"[INFO] Conectando a SQLite local: {self.db_path}")
+            self.connect_sqlite()
         
-        self.connect()
         self.create_tables()
     
     def get_default_db_path(self):
@@ -38,155 +42,277 @@ class Database:
         project_root = os.path.dirname(current_dir)
         return os.path.join(project_root, 'natillera.db')
     
-    def connect(self):
-        """Conectar a la base de datos (PostgreSQL o SQLite)"""
+    def connect_postgresql(self):
+        """Conectar a PostgreSQL en la nube"""
         try:
-            if self.db_type == 'postgresql':
-                import psycopg2
-                # Parsear la URL de PostgreSQL
-                result = urllib.parse.urlparse(self.db_url)
-                username = result.username
-                password = result.password
-                database = result.path[1:]
-                hostname = result.hostname
-                port = result.port
-                
-                self.connection = psycopg2.connect(
-                    database=database,
-                    user=username,
-                    password=password,
-                    host=hostname,
-                    port=port,
-                    sslmode='require'
-                )
-                self.cursor = self.connection.cursor()
-                print(f"[OK] Conexión PostgreSQL establecida")
-            else:
-                # SQLite
-                self.connection = sqlite3.connect(self.db_path, check_same_thread=False)
-                self.cursor = self.connection.cursor()
-                print(f"[OK] Conexión SQLite establecida a {self.db_path}")
+            import psycopg2
+            # Parsear la URL de PostgreSQL
+            result = urllib.parse.urlparse(self.db_url)
+            username = result.username
+            password = result.password
+            database = result.path[1:]
+            hostname = result.hostname
+            port = result.port if result.port else 5432
+            
+            self.connection = psycopg2.connect(
+                database=database,
+                user=username,
+                password=password,
+                host=hostname,
+                port=port,
+                sslmode='require'
+            )
+            self.cursor = self.connection.cursor()
+            print(f"[OK] Conexión PostgreSQL establecida")
+        except ImportError:
+            print("[ERROR] psycopg2 no está instalado. Ejecuta: pip install psycopg2-binary")
+            raise
         except Exception as e:
-            print(f"[ERROR] Conectando a la base de datos: {e}")
+            print(f"[ERROR] Conectando a PostgreSQL: {e}")
+            raise
+    
+    def connect_sqlite(self):
+        """Conectar a SQLite local"""
+        try:
+            self.connection = sqlite3.connect(self.db_path, check_same_thread=False)
+            self.cursor = self.connection.cursor()
+            print(f"[OK] Conexión SQLite establecida a {self.db_path}")
+        except Exception as e:
+            print(f"[ERROR] Conectando a SQLite: {e}")
             raise
     
     def create_tables(self):
         """Crear tablas si no existen (sintaxis compatible con PostgreSQL y SQLite)"""
         try:
             # Tabla de socios
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS socios (
-                    id_socio SERIAL PRIMARY KEY,
-                    codigo_socio TEXT UNIQUE NOT NULL,
-                    nombre TEXT NOT NULL,
-                    apellido TEXT NOT NULL,
-                    cedula TEXT UNIQUE NOT NULL,
-                    celular TEXT NOT NULL,
-                    correo TEXT,
-                    fecha_ingreso DATE DEFAULT CURRENT_DATE,
-                    estado TEXT DEFAULT 'activo',
-                    direccion TEXT,
-                    ciudad TEXT,
-                    observaciones TEXT
-                )
-            """)
+            if self.db_type == 'postgresql':
+                self.cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS socios (
+                        id_socio SERIAL PRIMARY KEY,
+                        codigo_socio TEXT UNIQUE NOT NULL,
+                        nombre TEXT NOT NULL,
+                        apellido TEXT NOT NULL,
+                        cedula TEXT UNIQUE NOT NULL,
+                        celular TEXT NOT NULL,
+                        correo TEXT,
+                        fecha_ingreso DATE DEFAULT CURRENT_DATE,
+                        estado TEXT DEFAULT 'activo',
+                        direccion TEXT,
+                        ciudad TEXT,
+                        observaciones TEXT
+                    )
+                """)
+            else:
+                self.cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS socios (
+                        id_socio INTEGER PRIMARY KEY AUTOINCREMENT,
+                        codigo_socio TEXT UNIQUE NOT NULL,
+                        nombre TEXT NOT NULL,
+                        apellido TEXT NOT NULL,
+                        cedula TEXT UNIQUE NOT NULL,
+                        celular TEXT NOT NULL,
+                        correo TEXT,
+                        fecha_ingreso DATE DEFAULT CURRENT_DATE,
+                        estado TEXT DEFAULT 'activo',
+                        direccion TEXT,
+                        ciudad TEXT,
+                        observaciones TEXT
+                    )
+                """)
             
             # Tabla de aportes
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS aportes (
-                    id_aporte SERIAL PRIMARY KEY,
-                    id_socio INTEGER NOT NULL,
-                    monto REAL NOT NULL,
-                    mes TEXT NOT NULL,
-                    año INTEGER NOT NULL,
-                    fecha_aporte DATE DEFAULT CURRENT_DATE,
-                    estado TEXT DEFAULT 'pagado',
-                    forma_pago TEXT DEFAULT 'efectivo',
-                    comprobante TEXT,
-                    observaciones TEXT
-                )
-            """)
+            if self.db_type == 'postgresql':
+                self.cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS aportes (
+                        id_aporte SERIAL PRIMARY KEY,
+                        id_socio INTEGER NOT NULL,
+                        monto REAL NOT NULL,
+                        mes TEXT NOT NULL,
+                        año INTEGER NOT NULL,
+                        fecha_aporte DATE DEFAULT CURRENT_DATE,
+                        estado TEXT DEFAULT 'pagado',
+                        forma_pago TEXT DEFAULT 'efectivo',
+                        comprobante TEXT,
+                        observaciones TEXT
+                    )
+                """)
+            else:
+                self.cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS aportes (
+                        id_aporte INTEGER PRIMARY KEY AUTOINCREMENT,
+                        id_socio INTEGER NOT NULL,
+                        monto REAL NOT NULL,
+                        mes TEXT NOT NULL,
+                        año INTEGER NOT NULL,
+                        fecha_aporte DATE DEFAULT CURRENT_DATE,
+                        estado TEXT DEFAULT 'pagado',
+                        forma_pago TEXT DEFAULT 'efectivo',
+                        comprobante TEXT,
+                        observaciones TEXT
+                    )
+                """)
             
             # Tabla de prestamos
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS prestamos (
-                    id_prestamo SERIAL PRIMARY KEY,
-                    id_socio INTEGER,
-                    id_recomendador INTEGER,
-                    monto_prestado REAL NOT NULL,
-                    interes_mensual REAL NOT NULL,
-                    cuota_mensual REAL NOT NULL,
-                    tipo_cuota TEXT DEFAULT 'Mensual',
-                    cuotas_totales INTEGER NOT NULL,
-                    cuotas_restantes INTEGER NOT NULL,
-                    saldo_pendiente REAL DEFAULT 0,
-                    abonos_extraordinarios REAL DEFAULT 0,
-                    fecha_prestamo DATE DEFAULT CURRENT_DATE,
-                    fecha_proximo_pago DATE,
-                    estado TEXT DEFAULT 'activo',
-                    es_externo BOOLEAN DEFAULT FALSE,
-                    nombre_externo TEXT,
-                    garantia TEXT,
-                    observaciones TEXT
-                )
-            """)
+            if self.db_type == 'postgresql':
+                self.cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS prestamos (
+                        id_prestamo SERIAL PRIMARY KEY,
+                        id_socio INTEGER,
+                        id_recomendador INTEGER,
+                        monto_prestado REAL NOT NULL,
+                        interes_mensual REAL NOT NULL,
+                        cuota_mensual REAL NOT NULL,
+                        tipo_cuota TEXT DEFAULT 'Mensual',
+                        cuotas_totales INTEGER NOT NULL,
+                        cuotas_restantes INTEGER NOT NULL,
+                        saldo_pendiente REAL DEFAULT 0,
+                        abonos_extraordinarios REAL DEFAULT 0,
+                        fecha_prestamo DATE DEFAULT CURRENT_DATE,
+                        fecha_proximo_pago DATE,
+                        estado TEXT DEFAULT 'activo',
+                        es_externo BOOLEAN DEFAULT FALSE,
+                        nombre_externo TEXT,
+                        garantia TEXT,
+                        observaciones TEXT
+                    )
+                """)
+            else:
+                self.cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS prestamos (
+                        id_prestamo INTEGER PRIMARY KEY AUTOINCREMENT,
+                        id_socio INTEGER,
+                        id_recomendador INTEGER,
+                        monto_prestado REAL NOT NULL,
+                        interes_mensual REAL NOT NULL,
+                        cuota_mensual REAL NOT NULL,
+                        tipo_cuota TEXT DEFAULT 'Mensual',
+                        cuotas_totales INTEGER NOT NULL,
+                        cuotas_restantes INTEGER NOT NULL,
+                        saldo_pendiente REAL DEFAULT 0,
+                        abonos_extraordinarios REAL DEFAULT 0,
+                        fecha_prestamo DATE DEFAULT CURRENT_DATE,
+                        fecha_proximo_pago DATE,
+                        estado TEXT DEFAULT 'activo',
+                        es_externo BOOLEAN DEFAULT FALSE,
+                        nombre_externo TEXT,
+                        garantia TEXT,
+                        observaciones TEXT
+                    )
+                """)
             
             # Tabla de pagos_prestamo
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS pagos_prestamo (
-                    id_pago SERIAL PRIMARY KEY,
-                    id_prestamo INTEGER NOT NULL,
-                    monto_pagado REAL NOT NULL,
-                    fecha_pago DATE DEFAULT CURRENT_DATE,
-                    forma_pago TEXT,
-                    abono_capital REAL DEFAULT 0,
-                    interes_cancelado REAL DEFAULT 0,
-                    saldo_restante REAL DEFAULT 0,
-                    es_extraordinario INTEGER DEFAULT 0
-                )
-            """)
+            if self.db_type == 'postgresql':
+                self.cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS pagos_prestamo (
+                        id_pago SERIAL PRIMARY KEY,
+                        id_prestamo INTEGER NOT NULL,
+                        monto_pagado REAL NOT NULL,
+                        fecha_pago DATE DEFAULT CURRENT_DATE,
+                        forma_pago TEXT,
+                        abono_capital REAL DEFAULT 0,
+                        interes_cancelado REAL DEFAULT 0,
+                        saldo_restante REAL DEFAULT 0,
+                        es_extraordinario INTEGER DEFAULT 0
+                    )
+                """)
+            else:
+                self.cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS pagos_prestamo (
+                        id_pago INTEGER PRIMARY KEY AUTOINCREMENT,
+                        id_prestamo INTEGER NOT NULL,
+                        monto_pagado REAL NOT NULL,
+                        fecha_pago DATE DEFAULT CURRENT_DATE,
+                        forma_pago TEXT,
+                        abono_capital REAL DEFAULT 0,
+                        interes_cancelado REAL DEFAULT 0,
+                        saldo_restante REAL DEFAULT 0,
+                        es_extraordinario INTEGER DEFAULT 0
+                    )
+                """)
             
             # Tabla de actividades
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS actividades (
-                    id_actividad SERIAL PRIMARY KEY,
-                    nombre_actividad TEXT NOT NULL,
-                    descripcion TEXT,
-                    fecha_actividad DATE NOT NULL,
-                    fecha_limite DATE,
-                    inversion_total REAL NOT NULL DEFAULT 0,
-                    ganancias REAL DEFAULT 0,
-                    estado TEXT DEFAULT 'planificada',
-                    ubicacion TEXT,
-                    responsable TEXT
-                )
-            """)
+            if self.db_type == 'postgresql':
+                self.cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS actividades (
+                        id_actividad SERIAL PRIMARY KEY,
+                        nombre_actividad TEXT NOT NULL,
+                        descripcion TEXT,
+                        fecha_actividad DATE NOT NULL,
+                        fecha_limite DATE,
+                        inversion_total REAL NOT NULL DEFAULT 0,
+                        ganancias REAL DEFAULT 0,
+                        estado TEXT DEFAULT 'planificada',
+                        ubicacion TEXT,
+                        responsable TEXT
+                    )
+                """)
+            else:
+                self.cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS actividades (
+                        id_actividad INTEGER PRIMARY KEY AUTOINCREMENT,
+                        nombre_actividad TEXT NOT NULL,
+                        descripcion TEXT,
+                        fecha_actividad DATE NOT NULL,
+                        fecha_limite DATE,
+                        inversion_total REAL NOT NULL DEFAULT 0,
+                        ganancias REAL DEFAULT 0,
+                        estado TEXT DEFAULT 'planificada',
+                        ubicacion TEXT,
+                        responsable TEXT
+                    )
+                """)
             
             # Tabla de pagos_actividad
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS pagos_actividad (
-                    id_pago SERIAL PRIMARY KEY,
-                    id_actividad INTEGER NOT NULL,
-                    id_socio INTEGER NOT NULL,
-                    monto_pagado REAL NOT NULL,
-                    fecha_pago DATE DEFAULT CURRENT_DATE,
-                    mes TEXT,
-                    año INTEGER,
-                    forma_pago TEXT DEFAULT 'Efectivo',
-                    observaciones TEXT,
-                    estado TEXT DEFAULT 'pagado'
-                )
-            """)
+            if self.db_type == 'postgresql':
+                self.cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS pagos_actividad (
+                        id_pago SERIAL PRIMARY KEY,
+                        id_actividad INTEGER NOT NULL,
+                        id_socio INTEGER NOT NULL,
+                        monto_pagado REAL NOT NULL,
+                        fecha_pago DATE DEFAULT CURRENT_DATE,
+                        mes TEXT,
+                        año INTEGER,
+                        forma_pago TEXT DEFAULT 'Efectivo',
+                        observaciones TEXT,
+                        estado TEXT DEFAULT 'pagado'
+                    )
+                """)
+            else:
+                self.cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS pagos_actividad (
+                        id_pago INTEGER PRIMARY KEY AUTOINCREMENT,
+                        id_actividad INTEGER NOT NULL,
+                        id_socio INTEGER NOT NULL,
+                        monto_pagado REAL NOT NULL,
+                        fecha_pago DATE DEFAULT CURRENT_DATE,
+                        mes TEXT,
+                        año INTEGER,
+                        forma_pago TEXT DEFAULT 'Efectivo',
+                        observaciones TEXT,
+                        estado TEXT DEFAULT 'pagado'
+                    )
+                """)
             
             # Tabla de configuracion
-            self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS configuracion (
-                    clave TEXT PRIMARY KEY,
-                    valor TEXT,
-                    descripcion TEXT,
-                    fecha_actualizacion DATE DEFAULT CURRENT_DATE
-                )
-            """)
+            if self.db_type == 'postgresql':
+                self.cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS configuracion (
+                        clave TEXT PRIMARY KEY,
+                        valor TEXT,
+                        descripcion TEXT,
+                        fecha_actualizacion DATE DEFAULT CURRENT_DATE
+                    )
+                """)
+            else:
+                self.cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS configuracion (
+                        clave TEXT PRIMARY KEY,
+                        valor TEXT,
+                        descripcion TEXT,
+                        fecha_actualizacion DATE DEFAULT CURRENT_DATE
+                    )
+                """)
             
             self.connection.commit()
             print("[OK] Tablas creadas/verificadas correctamente")
@@ -217,11 +343,7 @@ class Database:
                 self.cursor.execute(query, params)
             else:
                 self.cursor.execute(query)
-            
-            if self.db_type == 'postgresql':
-                return self.cursor.fetchall()
-            else:
-                return self.cursor.fetchall()
+            return self.cursor.fetchall()
         except Exception as e:
             print(f"[ERROR] Obteniendo datos: {e}")
             return []
@@ -257,12 +379,18 @@ class Database:
             mes_actual = meses[datetime.now().month]
             año_actual = datetime.now().year
             
-            self.cursor.execute("SELECT SUM(monto) FROM aportes WHERE mes = %s AND año = %s AND estado = 'pagado'", (mes_actual, año_actual))
+            if self.db_type == 'postgresql':
+                self.cursor.execute("SELECT SUM(monto) FROM aportes WHERE mes = %s AND año = %s AND estado = 'pagado'", (mes_actual, año_actual))
+            else:
+                self.cursor.execute("SELECT SUM(monto) FROM aportes WHERE mes = ? AND año = ? AND estado = 'pagado'", (mes_actual, año_actual))
             resultado = self.cursor.fetchone()[0]
             stats['aportes_mes'] = f"${resultado:,.2f}" if resultado else "$0"
             
             # Fondo total
-            self.cursor.execute("SELECT SUM(monto) FROM aportes WHERE estado = 'pagado'")
+            if self.db_type == 'postgresql':
+                self.cursor.execute("SELECT SUM(monto) FROM aportes WHERE estado = 'pagado'")
+            else:
+                self.cursor.execute("SELECT SUM(monto) FROM aportes WHERE estado = 'pagado'")
             resultado = self.cursor.fetchone()[0]
             stats['fondo_total'] = f"${resultado:,.2f}" if resultado else "$0"
             
