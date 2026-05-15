@@ -7,12 +7,28 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from modulos.database import Database
-from datetime import datetime
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../app_web', static_url_path='')
 CORS(app)
 
 db = Database()
+
+# ========== ENDPOINT TEMPORAL PARA CREAR SOCIO DE PRUEBA ==========
+@app.route('/api/crear_socio_prueba', methods=['GET'])
+def crear_socio_prueba():
+    try:
+        db.execute("""
+            INSERT OR IGNORE INTO socios 
+            (codigo_socio, nombre, apellido, cedula, celular, estado) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, ("SOC0001", "Juan", "Perez", "91018352", "3001234567", "activo"))
+        return jsonify({"success": True, "message": "Socio de prueba creado"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+# ========== RESTO DE TUS ENDPOINTS (login, dashboard, etc.) ==========
+@app.route('/api/login', methods=['POST'])
+def login():
 
 # ==================== ARCHIVOS ESTÁTICOS ====================
 
@@ -142,18 +158,6 @@ def get_dashboard(socio_id):
         'balance': aportes_total - prestamos_total,
         'cuotas_pendientes': cuotas_total
     }})
-
-@app.route('/api/crear_socio_prueba', methods=['GET'])
-def crear_socio_prueba():
-    try:
-        db.execute("""
-            INSERT OR IGNORE INTO socios 
-            (codigo_socio, nombre, apellido, cedula, celular, estado) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, ("SOC0001", "Juan", "Perez", "91018352", "3001234567", "activo"))
-        return jsonify({"success": True, "message": "Socio de prueba creado"})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
