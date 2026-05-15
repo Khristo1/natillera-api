@@ -32,9 +32,10 @@ def serve_static(filename):
 def crear_socio_prueba():
     try:
         db.execute("""
-            INSERT OR IGNORE INTO socios 
+            INSERT INTO socios 
             (codigo_socio, nombre, apellido, cedula, celular, estado) 
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (codigo_socio) DO NOTHING
         """, ("SOC0001", "Juan", "Perez", "91018352", "3001234567", "activo"))
         return jsonify({"success": True, "message": "Socio de prueba creado"})
     except Exception as e:
@@ -53,7 +54,7 @@ def login():
     query = """
     SELECT id_socio, codigo_socio, nombre, apellido, cedula, celular, correo
     FROM socios 
-    WHERE codigo_socio = ? AND cedula = ? AND estado = 'activo'
+    WHERE codigo_socio = %s AND cedula = %s AND estado = 'activo'
     """
     socio = db.fetch_one(query, (codigo, cedula))
     
@@ -77,7 +78,7 @@ def login():
 
 @app.route('/api/aportes/<int:socio_id>', methods=['GET'])
 def get_aportes(socio_id):
-    query = "SELECT id_aporte, monto, mes, año, fecha_aporte, forma_pago, estado FROM aportes WHERE id_socio = ? ORDER BY año DESC, fecha_aporte DESC"
+    query = "SELECT id_aporte, monto, mes, año, fecha_aporte, forma_pago, estado FROM aportes WHERE id_socio = %s ORDER BY año DESC, fecha_aporte DESC"
     aportes = db.fetch_all(query, (socio_id,))
     return jsonify({'success': True, 'aportes': [{
         'id': a[0], 'monto': a[1], 'mes': a[2], 'año': a[3],
@@ -86,14 +87,14 @@ def get_aportes(socio_id):
 
 @app.route('/api/aportes/total/<int:socio_id>', methods=['GET'])
 def get_total_aportes(socio_id):
-    total = db.fetch_one("SELECT SUM(monto) FROM aportes WHERE id_socio = ? AND estado = 'pagado'", (socio_id,))
+    total = db.fetch_one("SELECT SUM(monto) FROM aportes WHERE id_socio = %s AND estado = 'pagado'", (socio_id,))
     return jsonify({'success': True, 'total': total[0] if total[0] else 0})
 
 # ==================== PRESTAMOS ====================
 
 @app.route('/api/prestamos/<int:socio_id>', methods=['GET'])
 def get_prestamos(socio_id):
-    query = "SELECT id_prestamo, monto_prestado, interes_mensual, cuota_mensual, cuotas_totales, cuotas_restantes, fecha_prestamo, saldo_pendiente, estado FROM prestamos WHERE id_socio = ? ORDER BY fecha_prestamo DESC"
+    query = "SELECT id_prestamo, monto_prestado, interes_mensual, cuota_mensual, cuotas_totales, cuotas_restantes, fecha_prestamo, saldo_pendiente, estado FROM prestamos WHERE id_socio = %s ORDER BY fecha_prestamo DESC"
     prestamos = db.fetch_all(query, (socio_id,))
     return jsonify({'success': True, 'prestamos': [{
         'id': p[0], 'monto': p[1], 'interes': p[2], 'cuota_mensual': p[3],
@@ -114,7 +115,7 @@ def get_pagos_actividades(socio_id):
         SELECT pa.id_pago, a.nombre_actividad, pa.monto_pagado, pa.fecha_pago
         FROM pagos_actividad pa
         JOIN actividades a ON pa.id_actividad = a.id_actividad
-        WHERE pa.id_socio = ? ORDER BY pa.fecha_pago DESC
+        WHERE pa.id_socio = %s ORDER BY pa.fecha_pago DESC
     """, (socio_id,))
     return jsonify({'success': True, 'pagos': [{'id': p[0], 'actividad': p[1], 'monto': p[2], 'fecha': p[3]} for p in pagos]})
 
@@ -123,7 +124,7 @@ def get_pagos_actividades(socio_id):
 @app.route('/api/proximos_pagos/<int:socio_id>', methods=['GET'])
 def get_proximos_pagos(socio_id):
     recordatorios = []
-    prestamos = db.fetch_all("SELECT id_prestamo, cuota_mensual, saldo_pendiente, fecha_proximo_pago FROM prestamos WHERE id_socio = ? AND estado = 'activo' AND saldo_pendiente > 0", (socio_id,))
+    prestamos = db.fetch_all("SELECT id_prestamo, cuota_mensual, saldo_pendiente, fecha_proximo_pago FROM prestamos WHERE id_socio = %s AND estado = 'activo' AND saldo_pendiente > 0", (socio_id,))
     for p in prestamos:
         recordatorios.append({'tipo': 'Préstamo', 'prestamo_id': p[0], 'monto': p[1] if p[1] else 0, 'saldo_pendiente': p[2] if p[2] else 0, 'fechaLimite': p[3] if p[3] else ''})
     return jsonify({'success': True, 'recordatorios': recordatorios})
@@ -132,9 +133,9 @@ def get_proximos_pagos(socio_id):
 
 @app.route('/api/dashboard/<int:socio_id>', methods=['GET'])
 def get_dashboard(socio_id):
-    total_aportes = db.fetch_one("SELECT SUM(monto) FROM aportes WHERE id_socio = ? AND estado = 'pagado'", (socio_id,))
-    total_prestamos = db.fetch_one("SELECT SUM(saldo_pendiente) FROM prestamos WHERE id_socio = ? AND estado = 'activo'", (socio_id,))
-    cuotas_pendientes = db.fetch_one("SELECT SUM(cuotas_restantes) FROM prestamos WHERE id_socio = ? AND estado = 'activo'", (socio_id,))
+    total_aportes = db.fetch_one("SELECT SUM(monto) FROM aportes WHERE id_socio = %s AND estado = 'pagado'", (socio_id,))
+    total_prestamos = db.fetch_one("SELECT SUM(saldo_pendiente) FROM prestamos WHERE id_socio = %s AND estado = 'activo'", (socio_id,))
+    cuotas_pendientes = db.fetch_one("SELECT SUM(cuotas_restantes) FROM prestamos WHERE id_socio = %s AND estado = 'activo'", (socio_id,))
     aportes_total = total_aportes[0] if total_aportes and total_aportes[0] else 0
     prestamos_total = total_prestamos[0] if total_prestamos and total_prestamos[0] else 0
     cuotas_total = cuotas_pendientes[0] if cuotas_pendientes and cuotas_pendientes[0] else 0
