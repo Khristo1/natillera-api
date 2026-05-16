@@ -14,7 +14,7 @@
         </div>
         
         <div class="section">
-            <h3>📅 Próximas Actividades</h3>
+            <h3>📅 Actividades</h3>
             <div id="actividadesContainer" class="recordatorios-list">
                 <div class="loading">Cargando...</div>
             </div>
@@ -40,7 +40,7 @@
     </div>
     
     <script>
-        const API_URL = 'http://10.128.48.241:5000/api';
+        const API_URL = '/api';
         const socio = JSON.parse(localStorage.getItem('socio'));
         if (!socio) window.location.href = 'index.html';
         
