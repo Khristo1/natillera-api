@@ -11,47 +11,63 @@ class ModuloPrestamos:
         """Ventana para nuevo préstamo - Socio o Particular"""
         ventana = tk.Toplevel()
         ventana.title("Nuevo Préstamo")
-        ventana.geometry("750x700")
-        ventana.minsize(700, 600)
+        ventana.geometry("800x750")
+        ventana.minsize(750, 650)
         ventana.transient()
         ventana.grab_set()
         
-        main_frame = ttk.Frame(ventana, padding="20")
+        # Contenedor con scroll
+        main_container = ttk.Frame(ventana)
+        main_container.pack(fill=tk.BOTH, expand=True)
+        
+        canvas = tk.Canvas(main_container, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(main_container, orient=tk.VERTICAL, command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+        
+        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        main_frame = ttk.Frame(scrollable_frame, padding="20")
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         tk.Label(main_frame, text="NUEVO PRÉSTAMO", 
                 font=("Arial", 16, "bold"), fg="navy").pack(pady=(0, 20))
         
         # ========== TIPO DE PRÉSTAMO ==========
-        tipo_frame = ttk.LabelFrame(main_frame, text="1. TIPO DE PRÉSTAMO", padding="10")
-        tipo_frame.pack(fill=tk.X, pady=10)
+        tipo_frame = ttk.LabelFrame(main_frame, text="TIPO DE PRÉSTAMO", padding="10")
+        tipo_frame.pack(fill=tk.X, pady=5)
         
         tipo_var = tk.StringVar(value="socio")
         ttk.Radiobutton(tipo_frame, text="Préstamo a Socio (registrado)", variable=tipo_var, value="socio", command=lambda: toggle_tipo()).pack(anchor=tk.W, pady=2)
         ttk.Radiobutton(tipo_frame, text="Préstamo a Particular (no socio)", variable=tipo_var, value="particular", command=lambda: toggle_tipo()).pack(anchor=tk.W, pady=2)
         
-        # ========== FRAME PARA SOCIO ==========
-        socio_frame = ttk.LabelFrame(main_frame, text="2. SELECCIONAR SOCIO", padding="10")
-        socio_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+        # ========== FRAME PARA SOCIO (registrado) ==========
+        socio_frame = ttk.LabelFrame(main_frame, text="SELECCIONAR SOCIO", padding="10")
         
+        # Frame de búsqueda
         search_frame = ttk.Frame(socio_frame)
         search_frame.pack(fill=tk.X, pady=5)
         
-        ttk.Label(search_frame, text="Buscar socio:").pack(side=tk.LEFT, padx=5)
+        ttk.Label(search_frame, text="Buscar:").pack(side=tk.LEFT, padx=5)
         entry_buscar = ttk.Entry(search_frame, width=30)
         entry_buscar.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
         ttk.Button(search_frame, text="🔍 Buscar", command=lambda: buscar_socios()).pack(side=tk.LEFT, padx=5)
         
-        tree_socio_frame = ttk.Frame(socio_frame)
-        tree_socio_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+        # Treeview de socios
+        tree_frame = ttk.Frame(socio_frame)
+        tree_frame.pack(fill=tk.BOTH, expand=True, pady=5)
         
         columns = ("ID", "Código", "Nombre", "Cédula", "Celular")
-        tree_socios = ttk.Treeview(tree_socio_frame, columns=columns, show="headings", height=5)
+        tree_socios = ttk.Treeview(tree_frame, columns=columns, show="headings", height=5)
         for col in columns:
             tree_socios.heading(col, text=col)
-            tree_socios.column(col, width=100)
+            tree_socios.column(col, width=120)
         
-        scroll_y = ttk.Scrollbar(tree_socio_frame, orient=tk.VERTICAL, command=tree_socios.yview)
+        scroll_y = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=tree_socios.yview)
         tree_socios.configure(yscroll=scroll_y.set)
         tree_socios.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
@@ -60,9 +76,9 @@ class ModuloPrestamos:
         lbl_socio_seleccionado.pack(anchor=tk.W, pady=5)
         
         # ========== FRAME PARA PARTICULAR ==========
-        particular_frame = ttk.LabelFrame(main_frame, text="2. DATOS DEL PARTICULAR", padding="10")
+        particular_frame = ttk.LabelFrame(main_frame, text="DATOS DEL PARTICULAR", padding="10")
         
-        # Campos para particular
+        # Datos del particular
         ttk.Label(particular_frame, text="Nombre completo:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
         entry_nombre_particular = ttk.Entry(particular_frame, width=35)
         entry_nombre_particular.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
@@ -75,25 +91,25 @@ class ModuloPrestamos:
         entry_celular_particular = ttk.Entry(particular_frame, width=35)
         entry_celular_particular.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
         
-        # Frame para socio recomendador
+        # Socio recomendador
         ttk.Label(particular_frame, text="Recomendado por (socio):").grid(row=3, column=0, padx=5, pady=5, sticky=tk.W)
-        frame_recomendador = ttk.Frame(particular_frame)
-        frame_recomendador.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
+        frame_rec = ttk.Frame(particular_frame)
+        frame_rec.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
         
-        entry_recomendador_buscar = ttk.Entry(frame_recomendador, width=25)
-        entry_recomendador_buscar.pack(side=tk.LEFT)
-        ttk.Button(frame_recomendador, text="Buscar", command=lambda: buscar_recomendador()).pack(side=tk.LEFT, padx=5)
+        entry_buscar_rec = ttk.Entry(frame_rec, width=25)
+        entry_buscar_rec.pack(side=tk.LEFT)
+        ttk.Button(frame_rec, text="Buscar", command=lambda: buscar_recomendador()).pack(side=tk.LEFT, padx=5)
         
-        tree_recomendador_frame = ttk.Frame(particular_frame)
-        tree_recomendador_frame.grid(row=4, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
+        tree_rec_frame = ttk.Frame(particular_frame)
+        tree_rec_frame.grid(row=4, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
         
         columns_rec = ("ID", "Código", "Nombre", "Cédula")
-        tree_recomendador = ttk.Treeview(tree_recomendador_frame, columns=columns_rec, show="headings", height=3)
+        tree_recomendador = ttk.Treeview(tree_rec_frame, columns=columns_rec, show="headings", height=3)
         for col in columns_rec:
             tree_recomendador.heading(col, text=col)
-            tree_recomendador.column(col, width=100)
+            tree_recomendador.column(col, width=110)
         
-        scroll_rec = ttk.Scrollbar(tree_recomendador_frame, orient=tk.VERTICAL, command=tree_recomendador.yview)
+        scroll_rec = ttk.Scrollbar(tree_rec_frame, orient=tk.VERTICAL, command=tree_recomendador.yview)
         tree_recomendador.configure(yscroll=scroll_rec.set)
         tree_recomendador.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scroll_rec.pack(side=tk.RIGHT, fill=tk.Y)
@@ -101,39 +117,57 @@ class ModuloPrestamos:
         lbl_recomendador = tk.Label(particular_frame, text="⚡ Recomendador: Ninguno", font=("Arial", 10, "bold"), fg="blue")
         lbl_recomendador.grid(row=5, column=0, columnspan=2, pady=5, sticky=tk.W)
         
-        # ========== FRAME DATOS DEL PRÉSTAMO ==========
-        datos_frame = ttk.LabelFrame(main_frame, text="3. DATOS DEL PRÉSTAMO", padding="10")
+        # ========== DATOS DEL PRÉSTAMO ==========
+        datos_frame = ttk.LabelFrame(main_frame, text="DATOS DEL PRÉSTAMO", padding="10")
         datos_frame.pack(fill=tk.X, pady=10)
         
-        ttk.Label(datos_frame, text="Monto ($):").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        # Monto
+        ttk.Label(datos_frame, text="Monto del préstamo ($):").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
         entry_monto = ttk.Entry(datos_frame)
         entry_monto.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
         entry_monto.insert(0, "0")
         
+        # Interés mensual
         ttk.Label(datos_frame, text="Interés mensual (%):").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
         entry_interes = ttk.Entry(datos_frame)
         entry_interes.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
         entry_interes.insert(0, "10")
         
-        ttk.Label(datos_frame, text="Cuota mensual sugerida ($):").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
-        entry_cuota = ttk.Entry(datos_frame)
-        entry_cuota.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
-        entry_cuota.insert(0, "0")
-        ttk.Label(datos_frame, text="(0 para calcular automática)", font=("Arial", 8), fg="gray").grid(row=3, column=1, padx=5, sticky=tk.W)
+        # Cuotas
+        ttk.Label(datos_frame, text="Número de cuotas:").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+        entry_cuotas = ttk.Entry(datos_frame)
+        entry_cuotas.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
+        entry_cuotas.insert(0, "12")
         
-        ttk.Label(datos_frame, text="Plazo (meses):").grid(row=4, column=0, padx=5, pady=5, sticky=tk.W)
-        entry_plazo = ttk.Entry(datos_frame)
-        entry_plazo.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
-        entry_plazo.insert(0, "12")
+        # Abono a capital (opcional)
+        ttk.Label(datos_frame, text="Abono inicial a capital ($):").grid(row=3, column=0, padx=5, pady=5, sticky=tk.W)
+        entry_abono_inicial = ttk.Entry(datos_frame)
+        entry_abono_inicial.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
+        entry_abono_inicial.insert(0, "0")
         
-        ttk.Label(datos_frame, text="Fecha préstamo:").grid(row=5, column=0, padx=5, pady=5, sticky=tk.W)
-        entry_fecha = ttk.Entry(datos_frame)
-        entry_fecha.grid(row=5, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
-        entry_fecha.insert(0, datetime.now().strftime("%Y-%m-%d"))
+        # Cuota mensual sugerida
+        ttk.Label(datos_frame, text="Cuota mensual sugerida ($):").grid(row=4, column=0, padx=5, pady=5, sticky=tk.W)
+        entry_cuota_sugerida = ttk.Entry(datos_frame)
+        entry_cuota_sugerida.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
+        entry_cuota_sugerida.insert(0, "0")
         
-        ttk.Label(datos_frame, text="Observaciones:").grid(row=6, column=0, padx=5, pady=5, sticky=tk.W)
+        # Fecha inicial
+        ttk.Label(datos_frame, text="Fecha inicial del préstamo:").grid(row=5, column=0, padx=5, pady=5, sticky=tk.W)
+        entry_fecha_inicial = ttk.Entry(datos_frame)
+        entry_fecha_inicial.grid(row=5, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
+        entry_fecha_inicial.insert(0, datetime.now().strftime("%Y-%m-%d"))
+        
+        # Fecha de primera cuota
+        ttk.Label(datos_frame, text="Fecha de primera cuota:").grid(row=6, column=0, padx=5, pady=5, sticky=tk.W)
+        entry_fecha_primera = ttk.Entry(datos_frame)
+        entry_fecha_primera.grid(row=6, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
+        fecha_defecto = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
+        entry_fecha_primera.insert(0, fecha_defecto)
+        
+        # Observaciones
+        ttk.Label(datos_frame, text="Observaciones:").grid(row=7, column=0, padx=5, pady=5, sticky=tk.W)
         text_obs = tk.Text(datos_frame, height=3, width=35)
-        text_obs.grid(row=6, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
+        text_obs.grid(row=7, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
         
         # ========== FUNCIONES ==========
         socio_seleccionado_id = None
@@ -176,7 +210,7 @@ class ModuloPrestamos:
                     lbl_socio_seleccionado.config(text=f"✅ Socio seleccionado: {socio_seleccionado_nombre}")
         
         def buscar_recomendador():
-            texto = entry_recomendador_buscar.get().strip()
+            texto = entry_buscar_rec.get().strip()
             for item in tree_recomendador.get_children():
                 tree_recomendador.delete(item)
             
@@ -204,48 +238,59 @@ class ModuloPrestamos:
         tree_socios.bind("<<TreeviewSelect>>", on_socio_select)
         tree_recomendador.bind("<<TreeviewSelect>>", on_recomendador_select)
         
-        def formatear_monto(event=None):
-            try:
-                texto = entry_monto.get()
-                if texto:
-                    limpio = texto.replace('$', '').replace(',', '').strip()
-                    if limpio and limpio.replace('.', '', 1).isdigit():
-                        num = float(limpio)
-                        if num > 0:
-                            entry_monto.delete(0, tk.END)
-                            entry_monto.insert(0, f"{num:,.0f}")
-            except:
-                pass
+        def formatear_monto(entry):
+            def _format(event=None):
+                try:
+                    texto = entry.get()
+                    if texto:
+                        limpio = texto.replace('$', '').replace(',', '').strip()
+                        if limpio and limpio.replace('.', '', 1).isdigit():
+                            num = float(limpio)
+                            if num > 0:
+                                entry.delete(0, tk.END)
+                                entry.insert(0, f"{num:,.0f}")
+                except:
+                    pass
+            return _format
         
-        entry_monto.bind('<FocusOut>', formatear_monto)
+        entry_monto.bind('<FocusOut>', formatear_monto(entry_monto))
         entry_monto.bind('<FocusIn>', lambda e: entry_monto.delete(0, tk.END))
         
-        def registrar():
+        entry_abono_inicial.bind('<FocusOut>', formatear_monto(entry_abono_inicial))
+        entry_abono_inicial.bind('<FocusIn>', lambda e: entry_abono_inicial.delete(0, tk.END))
+        
+        def registrar_prestamo():
             try:
                 monto_texto = entry_monto.get().replace(',', '')
                 monto = float(monto_texto) if monto_texto else 0
                 interes = float(entry_interes.get())
-                plazo = int(entry_plazo.get())
-                fecha = entry_fecha.get()
-                cuota_sugerida = float(entry_cuota.get().replace(',', '')) if entry_cuota.get() else 0
+                cuotas = int(entry_cuotas.get())
+                abono_inicial = float(entry_abono_inicial.get().replace(',', '')) if entry_abono_inicial.get() else 0
+                cuota_sugerida = float(entry_cuota_sugerida.get().replace(',', '')) if entry_cuota_sugerida.get() else 0
+                fecha_inicial = entry_fecha_inicial.get()
+                fecha_primera = entry_fecha_primera.get()
                 obs = text_obs.get("1.0", tk.END).strip()
                 
                 if monto <= 0:
                     messagebox.showwarning("Error", "El monto debe ser mayor a cero")
                     return
                 
-                # Calcular cuota
-                interes_mes = monto * (interes / 100)
+                # Calcular saldo después de abono inicial
+                saldo_inicial = monto - abono_inicial
+                if saldo_inicial < 0:
+                    saldo_inicial = 0
+                
+                # Calcular cuota mensual
+                interes_mensual_calc = saldo_inicial * (interes / 100)
                 if cuota_sugerida > 0:
                     cuota = cuota_sugerida
                 else:
-                    cuota = (monto / plazo) + interes_mes
+                    cuota = (saldo_inicial / cuotas) + interes_mensual_calc
                 
-                fecha_dt = datetime.strptime(fecha, "%Y-%m-%d")
-                fecha_prox = fecha_dt + timedelta(days=30)
+                fecha_inicial_dt = datetime.strptime(fecha_inicial, "%Y-%m-%d")
+                fecha_primera_dt = datetime.strptime(fecha_primera, "%Y-%m-%d")
                 
                 if tipo_var.get() == "socio":
-                    # Préstamo a socio existente
                     if not socio_seleccionado_id:
                         messagebox.showwarning("Error", "Seleccione un socio")
                         return
@@ -253,15 +298,14 @@ class ModuloPrestamos:
                     query = """INSERT INTO prestamos 
                         (id_socio, monto_prestado, interes_mensual, cuota_mensual,
                         cuotas_totales, cuotas_restantes, fecha_prestamo, fecha_proximo_pago,
-                        saldo_pendiente, observaciones, estado, es_externo, nombre_externo)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 0, NULL)"""
+                        saldo_pendiente, observaciones, estado, es_externo)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 0)"""
                     
-                    self.db.execute(query, (socio_seleccionado_id, monto, interes, cuota, plazo, plazo, 
-                                            fecha, fecha_prox.strftime("%Y-%m-%d"), monto, obs))
-                    messagebox.showinfo("Éxito", f"Préstamo registrado para socio: {socio_seleccionado_nombre}")
+                    self.db.execute(query, (socio_seleccionado_id, monto, interes, cuota, cuotas, cuotas,
+                                            fecha_inicial, fecha_primera, saldo_inicial, obs))
+                    messagebox.showinfo("Éxito", f"Préstamo aprobado para socio: {socio_seleccionado_nombre}")
                     
                 else:
-                    # Préstamo a particular
                     nombre = entry_nombre_particular.get().strip()
                     cedula = entry_cedula_particular.get().strip()
                     celular = entry_celular_particular.get().strip()
@@ -277,10 +321,10 @@ class ModuloPrestamos:
                         cedula_externa, celular_externo, id_recomendador)
                         VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 1, ?, ?, ?, ?)"""
                     
-                    self.db.execute(query, (monto, interes, cuota, plazo, plazo, fecha,
-                                            fecha_prox.strftime("%Y-%m-%d"), monto, obs,
+                    self.db.execute(query, (monto, interes, cuota, cuotas, cuotas, fecha_inicial,
+                                            fecha_primera, saldo_inicial, obs,
                                             nombre, cedula, celular, recomendador_id))
-                    messagebox.showinfo("Éxito", f"Préstamo registrado para particular: {nombre}")
+                    messagebox.showinfo("Éxito", f"Préstamo aprobado para particular: {nombre}")
                 
                 ventana.destroy()
                 
@@ -291,7 +335,7 @@ class ModuloPrestamos:
         btn_frame = ttk.Frame(main_frame)
         btn_frame.pack(pady=20)
         
-        ttk.Button(btn_frame, text="📝 REGISTRAR PRÉSTAMO", command=registrar, width=20).pack(side=tk.LEFT, padx=10)
+        ttk.Button(btn_frame, text="✅ APROBAR PRÉSTAMO", command=registrar_prestamo, width=20).pack(side=tk.LEFT, padx=10)
         ttk.Button(btn_frame, text="❌ CANCELAR", command=ventana.destroy, width=20).pack(side=tk.LEFT, padx=10)
         
         # Inicializar
