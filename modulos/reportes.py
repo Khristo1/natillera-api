@@ -44,7 +44,7 @@ class ModuloReportes:
             # Aportes del mes actual
             mes_actual = datetime.now().strftime("%B")
             año_actual = datetime.now().year
-            self.db.cursor.execute("SELECT SUM(monto) FROM aportes WHERE mes = ? AND año = ?", 
+            self.db.cursor.execute("SELECT SUM(monto) FROM aportes WHERE mes = %s AND año = %s", 
                                  (mes_actual, año_actual))
             aportes_mes = self.db.cursor.fetchone()[0] or 0
             reporte += f"Aportes {mes_actual}: ${aportes_mes:,.2f}\n"
@@ -127,7 +127,7 @@ class ModuloReportes:
             SELECT codigo_socio, nombre, apellido, cedula, celular, 
                    fecha_ingreso, estado
             FROM socios 
-            WHERE id_socio = ?
+            WHERE id_socio = %s
             """
             socio = self.db.fetch_one(query_socio, (socio_id,))
             
@@ -145,7 +145,7 @@ class ModuloReportes:
                 query_aportes = """
                 SELECT mes, año, monto, fecha_aporte
                 FROM aportes 
-                WHERE id_socio = ?
+                WHERE id_socio = %s
                 ORDER BY año DESC, fecha_aporte DESC
                 """
                 aportes = self.db.fetch_all(query_aportes, (socio_id,))
@@ -160,10 +160,10 @@ class ModuloReportes:
                 
                 # Préstamos del socio
                 query_prestamos = """
-                SELECT monto_prestado, interes, cuota_mensual, 
+                SELECT monto_prestado, interes_mensual, cuota_mensual, 
                        cuotas_totales, cuotas_restantes, estado
                 FROM prestamos 
-                WHERE id_socio = ?
+                WHERE id_socio = %s
                 ORDER BY fecha_prestamo DESC
                 """
                 prestamos = self.db.fetch_all(query_prestamos, (socio_id,))

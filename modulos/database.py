@@ -324,6 +324,9 @@ class Database:
     def execute(self, query, params=None):
         """Ejecutar consulta (INSERT, UPDATE, DELETE)"""
         try:
+            # Convertir ? a %s si es PostgreSQL
+            if self.db_type == 'postgresql':
+                query = query.replace('?', '%s')
             if params:
                 self.cursor.execute(query, params)
             else:
@@ -335,10 +338,13 @@ class Database:
             if self.connection:
                 self.connection.rollback()
             return False
-    
+
     def fetch_all(self, query, params=None):
         """Obtener todos los resultados"""
         try:
+            # Convertir ? a %s si es PostgreSQL
+            if self.db_type == 'postgresql':
+                query = query.replace('?', '%s')
             if params:
                 self.cursor.execute(query, params)
             else:
@@ -347,10 +353,13 @@ class Database:
         except Exception as e:
             print(f"[ERROR] Obteniendo datos: {e}")
             return []
-    
+
     def fetch_one(self, query, params=None):
         """Obtener un solo resultado"""
         try:
+            # Convertir ? a %s si es PostgreSQL
+            if self.db_type == 'postgresql':
+                query = query.replace('?', '%s')
             if params:
                 self.cursor.execute(query, params)
             else:
@@ -382,7 +391,7 @@ class Database:
             if self.db_type == 'postgresql':
                 self.cursor.execute("SELECT SUM(monto) FROM aportes WHERE mes = %s AND año = %s AND estado = 'pagado'", (mes_actual, año_actual))
             else:
-                self.cursor.execute("SELECT SUM(monto) FROM aportes WHERE mes = ? AND año = ? AND estado = 'pagado'", (mes_actual, año_actual))
+                self.cursor.execute("SELECT SUM(monto) FROM aportes WHERE mes = %s AND año = %s AND estado = 'pagado'", (mes_actual, año_actual))
             resultado = self.cursor.fetchone()[0]
             stats['aportes_mes'] = f"${resultado:,.2f}" if resultado else "$0"
             

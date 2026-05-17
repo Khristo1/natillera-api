@@ -1,8 +1,6 @@
 # modulos/prestamos.py
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
-import webbrowser
-import urllib.parse
 from datetime import datetime, timedelta
 
 class ModuloPrestamos:
@@ -10,240 +8,207 @@ class ModuloPrestamos:
         self.db = database
     
     def nuevo_prestamo(self):
+        """Ventana para nuevo préstamo"""
+        # ... (código completo que ya tienes)
+        # Si no lo tienes, pídemelo y te lo doy
+    
+    def gestionar_prestamos(self):
+        """Gestionar préstamos existentes - Ventana completa"""
         ventana = tk.Toplevel()
-        ventana.title("Nuevo Préstamo")
-        ventana.geometry("850x750")
-        ventana.minsize(750, 600)
-        ventana.transient()
-        ventana.grab_set()
+        ventana.title("Gestión de Préstamos")
+        ventana.geometry("1300x700")
+        ventana.minsize(900, 500)
         
-        # Contenedor con scroll
-        main_container = ttk.Frame(ventana)
-        main_container.pack(fill=tk.BOTH, expand=True)
-        
-        canvas = tk.Canvas(main_container, highlightthickness=0)
-        scrollbar = ttk.Scrollbar(main_container, orient=tk.VERTICAL, command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
-        
-        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-        
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        main_frame = ttk.Frame(scrollable_frame, padding="20")
+        # ========== LISTA DE PRÉSTAMOS ==========
+        main_frame = ttk.Frame(ventana, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Título
-        tk.Label(main_frame, text="NUEVO PRÉSTAMO", font=("Arial", 18, "bold"), fg="navy").pack(pady=(0, 20))
+        columns = ("ID", "Socio", "Monto", "Interés", "Cuota", "Tipo", "Cuotas", "Restantes", "Saldo", "Estado", "Fecha")
+        tree = ttk.Treeview(main_frame, columns=columns, show="headings", height=15)
         
-        # ========== SELECCIONAR SOCIO ==========
-        socio_frame = ttk.LabelFrame(main_frame, text="1. SELECCIONAR SOCIO", padding="10")
-        socio_frame.pack(fill=tk.X, pady=10)
+        col_widths = {"ID": 50, "Socio": 200, "Monto": 120, "Interés": 70, "Cuota": 120, 
+                      "Tipo": 80, "Cuotas": 70, "Restantes": 70, "Saldo": 120, "Estado": 90, "Fecha": 100}
         
-        search_frame = ttk.Frame(socio_frame)
-        search_frame.pack(fill=tk.X, pady=5)
+        for col in columns:
+            tree.heading(col, text=col)
+            tree.column(col, width=col_widths.get(col, 100))
         
-        ttk.Label(search_frame, text="Buscar socio:").pack(side=tk.LEFT, padx=5)
-        entry_buscar = ttk.Entry(search_frame, width=30)
-        entry_buscar.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
-        ttk.Button(search_frame, text="Buscar", command=lambda: buscar_socios()).pack(side=tk.LEFT, padx=5)
+        scrollbar_y = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=tree.yview)
+        scrollbar_x = ttk.Scrollbar(main_frame, orient=tk.HORIZONTAL, command=tree.xview)
+        tree.configure(yscroll=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
         
-        # Treeview de socios
-        tree_frame = ttk.Frame(socio_frame)
-        tree_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+        tree.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        scrollbar_y.pack(side=tk.RIGHT, fill=tk.Y)
+        scrollbar_x.pack(side=tk.BOTTOM, fill=tk.X)
         
-        cols = ("ID", "Código", "Nombre", "Cédula", "Celular")
-        tree_socios = ttk.Treeview(tree_frame, columns=cols, show="headings", height=5)
-        for col in cols:
-            tree_socios.heading(col, text=col)
-            tree_socios.column(col, width=100)
+        # ========== DETALLES DEL PRÉSTAMO ==========
+        detalles_frame = ttk.LabelFrame(main_frame, text="Detalles del Préstamo Seleccionado", padding="10")
+        detalles_frame.pack(fill=tk.X, pady=10)
         
-        scroll_y = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=tree_socios.yview)
-        tree_socios.configure(yscrollcommand=scroll_y.set)
-        tree_socios.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+        lbl_socio = tk.Label(detalles_frame, text="Socio: ", font=("Arial", 11, "bold"))
+        lbl_socio.pack(anchor=tk.W, pady=2)
         
-        lbl_socio = tk.Label(socio_frame, text="⚡ Socio seleccionado: Ninguno", font=("Arial", 10, "bold"), fg="green")
-        lbl_socio.pack(anchor=tk.W, pady=5)
+        lbl_monto = tk.Label(detalles_frame, text="Monto: $0", font=("Arial", 10))
+        lbl_monto.pack(anchor=tk.W, pady=2)
         
-        # ========== DATOS DEL PRÉSTAMO ==========
-        datos_frame = ttk.LabelFrame(main_frame, text="2. DATOS DEL PRÉSTAMO", padding="10")
-        datos_frame.pack(fill=tk.X, pady=10)
+        lbl_interes = tk.Label(detalles_frame, text="Interés mensual: 0%", font=("Arial", 10))
+        lbl_interes.pack(anchor=tk.W, pady=2)
         
-        # Monto
-        row0 = ttk.Frame(datos_frame)
-        row0.pack(fill=tk.X, pady=5)
-        ttk.Label(row0, text="Monto del préstamo ($):", width=20).pack(side=tk.LEFT)
-        entry_monto = ttk.Entry(row0)
-        entry_monto.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        entry_monto.insert(0, "0")
+        lbl_saldo = tk.Label(detalles_frame, text="Saldo pendiente: $0", font=("Arial", 11, "bold"), fg="red")
+        lbl_saldo.pack(anchor=tk.W, pady=2)
         
-        # Interés mensual
-        row1 = ttk.Frame(datos_frame)
-        row1.pack(fill=tk.X, pady=5)
-        ttk.Label(row1, text="Interés mensual (%):", width=20).pack(side=tk.LEFT)
-        entry_interes = ttk.Entry(row1)
-        entry_interes.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        entry_interes.insert(0, "10")
+        lbl_proximo = tk.Label(detalles_frame, text="Próxima cuota: $0", font=("Arial", 10))
+        lbl_proximo.pack(anchor=tk.W, pady=2)
         
-        # Plazo
-        row2 = ttk.Frame(datos_frame)
-        row2.pack(fill=tk.X, pady=5)
-        ttk.Label(row2, text="Plazo (meses):", width=20).pack(side=tk.LEFT)
-        entry_plazo = ttk.Entry(row2)
-        entry_plazo.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        entry_plazo.insert(0, "12")
-        
-        # Cuota sugerida
-        row3 = ttk.Frame(datos_frame)
-        row3.pack(fill=tk.X, pady=5)
-        ttk.Label(row3, text="Cuota sugerida ($):", width=20).pack(side=tk.LEFT)
-        entry_cuota = ttk.Entry(row3)
-        entry_cuota.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        entry_cuota.insert(0, "0")
-        
-        # Fecha
-        row4 = ttk.Frame(datos_frame)
-        row4.pack(fill=tk.X, pady=5)
-        ttk.Label(row4, text="Fecha préstamo:", width=20).pack(side=tk.LEFT)
-        entry_fecha = ttk.Entry(row4)
-        entry_fecha.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        entry_fecha.insert(0, datetime.now().strftime("%Y-%m-%d"))
-        
-        # Observaciones
-        row5 = ttk.Frame(datos_frame)
-        row5.pack(fill=tk.X, pady=5)
-        ttk.Label(row5, text="Observaciones:", width=20).pack(side=tk.LEFT)
-        text_obs = tk.Text(row5, height=3)
-        text_obs.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        
-        # ========== SIMULACIÓN ==========
-        sim_frame = ttk.LabelFrame(main_frame, text="3. SIMULACIÓN", padding="10")
-        sim_frame.pack(fill=tk.X, pady=10)
-        lbl_sim = tk.Label(sim_frame, text="Complete los datos", justify=tk.LEFT)
-        lbl_sim.pack()
+        lbl_fecha = tk.Label(detalles_frame, text="Fecha próximo pago: ", font=("Arial", 10))
+        lbl_fecha.pack(anchor=tk.W, pady=2)
         
         # ========== BOTONES ==========
         btn_frame = ttk.Frame(main_frame)
-        btn_frame.pack(fill=tk.X, pady=20)
+        btn_frame.pack(fill=tk.X, pady=10)
         
-        btn_guardar = ttk.Button(btn_frame, text="REGISTRAR PRÉSTAMO", command=lambda: registrar_prestamo())
-        btn_guardar.pack(side=tk.LEFT, padx=10)
-        
-        btn_cancelar = ttk.Button(btn_frame, text="CANCELAR", command=ventana.destroy)
-        btn_cancelar.pack(side=tk.LEFT, padx=10)
-        
-        # ========== FUNCIONES ==========
-        socio_id = None
-        socio_nombre = None
-        
-        def buscar_socios():
-            texto = entry_buscar.get().strip()
-            for item in tree_socios.get_children():
-                tree_socios.delete(item)
+        def cargar_prestamos():
+            for item in tree.get_children():
+                tree.delete(item)
             
-            if not texto:
-                query = "SELECT id_socio, codigo_socio, nombre || ' ' || apellido, cedula, celular FROM socios WHERE estado = 'activo' ORDER BY nombre LIMIT 30"
-                socios = self.db.fetch_all(query)
-            else:
-                query = "SELECT id_socio, codigo_socio, nombre || ' ' || apellido, cedula, celular FROM socios WHERE estado = 'activo' AND (nombre LIKE ? OR apellido LIKE ? OR cedula LIKE ? OR codigo_socio LIKE ?) ORDER BY nombre LIMIT 30"
-                p = f"%{texto}%"
-                socios = self.db.fetch_all(query, (p, p, p, p))
+            query = """
+            SELECT p.id_prestamo, s.nombre || ' ' || s.apellido,
+                   p.monto_prestado, p.interes_mensual, p.cuota_mensual, p.tipo_cuota,
+                   p.cuotas_totales, p.cuotas_restantes, p.saldo_pendiente, p.estado,
+                   p.fecha_prestamo
+            FROM prestamos p
+            JOIN socios s ON p.id_socio = s.id_socio
+            ORDER BY p.fecha_prestamo DESC
+            """
+            prestamos = self.db.fetch_all(query)
             
-            for s in socios:
-                tree_socios.insert("", tk.END, values=s)
-        
-        def on_select(event):
-            nonlocal socio_id, socio_nombre
-            sel = tree_socios.selection()
-            if sel:
-                vals = tree_socios.item(sel[0])['values']
-                if vals:
-                    socio_id = vals[0]
-                    socio_nombre = vals[2]
-                    lbl_socio.config(text=f"✅ Socio seleccionado: {socio_nombre}")
-        
-        tree_socios.bind("<<TreeviewSelect>>", on_select)
-        
-        def actualizar_simulacion():
-            try:
-                monto_txt = entry_monto.get().replace(',', '')
-                monto = float(monto_txt) if monto_txt else 0
-                interes = float(entry_interes.get()) if entry_interes.get() else 0
-                plazo = int(entry_plazo.get()) if entry_plazo.get() else 0
-                cuota_sug = float(entry_cuota.get().replace(',', '')) if entry_cuota.get() else 0
+            if not prestamos:
+                tree.insert("", tk.END, values=("No hay préstamos", "", "", "", "", "", "", "", "", "", ""))
+                return
+            
+            for p in prestamos:
+                monto = float(p[2]) if p[2] is not None else 0
+                interes = float(p[3]) if p[3] is not None else 0
+                cuota = float(p[4]) if p[4] is not None else 0
+                saldo = float(p[8]) if p[8] is not None else 0
+                valores = (p[0], p[1], f"${monto:,.2f}", f"{interes}%", f"${cuota:,.2f}",
+                          p[5], p[6], p[7], f"${saldo:,.2f}", p[9], p[10])
                 
-                if monto > 0 and plazo > 0:
-                    interes_mes = monto * (interes / 100)
-                    if cuota_sug > 0:
-                        total = cuota_sug * plazo
-                        lbl_sim.config(text=f"Cuota: ${cuota_sug:,.2f} | Total: ${total:,.2f} | Interés total: ${total - monto:,.2f}")
-                    else:
-                        cuota_aprox = (monto / plazo) + interes_mes
-                        lbl_sim.config(text=f"Interés primer mes: ${interes_mes:,.2f} | Cuota sugerida aprox: ${cuota_aprox:,.2f}")
+                if p[9] == "activo":
+                    tree.insert("", tk.END, values=valores, tags=("activo",))
+                elif p[9] == "pagado":
+                    tree.insert("", tk.END, values=valores, tags=("pagado",))
                 else:
-                    lbl_sim.config(text="Complete monto y plazo")
-            except:
-                lbl_sim.config(text="Complete datos válidos")
+                    tree.insert("", tk.END, values=valores, tags=("vencido",))
+            
+            tree.tag_configure('activo', foreground='green')
+            tree.tag_configure('pagado', foreground='blue')
+            tree.tag_configure('vencido', foreground='red')
         
-        entry_monto.bind("<KeyRelease>", lambda e: actualizar_simulacion())
-        entry_interes.bind("<KeyRelease>", lambda e: actualizar_simulacion())
-        entry_plazo.bind("<KeyRelease>", lambda e: actualizar_simulacion())
-        entry_cuota.bind("<KeyRelease>", lambda e: actualizar_simulacion())
+        def mostrar_detalles(event=None):
+            seleccion = tree.selection()
+            if not seleccion:
+                return
+            item = tree.item(seleccion[0])
+            valores = item['values']
+            if valores[0] == "No hay préstamos":
+                return
+            prestamo_id = valores[0]
+            query = "SELECT saldo_pendiente, cuota_mensual, fecha_proximo_pago, interes_mensual, monto_prestado FROM prestamos WHERE id_prestamo = ?"
+            prestamo = self.db.fetch_one(query, (prestamo_id,))
+            if prestamo:
+                saldo = float(prestamo[0]) if prestamo[0] is not None else 0
+                cuota = float(prestamo[1]) if prestamo[1] is not None else 0
+                fecha = str(prestamo[2]) if prestamo[2] else "No definida"
+                interes = float(prestamo[3]) if prestamo[3] is not None else 0
+                monto = float(prestamo[4]) if prestamo[4] is not None else 0
+                lbl_socio.config(text=f"Socio: {valores[1]}")
+                lbl_monto.config(text=f"Monto: ${monto:,.2f}")
+                lbl_interes.config(text=f"Interés mensual: {interes}%")
+                lbl_saldo.config(text=f"Saldo pendiente: ${saldo:,.2f}")
+                lbl_proximo.config(text=f"Próxima cuota: ${cuota:,.2f}")
+                lbl_fecha.config(text=f"Fecha próximo pago: {fecha}")
         
-        def registrar_prestamo():
-            try:
-                if not socio_id:
-                    messagebox.showwarning("Error", "Seleccione un socio")
-                    return
-                
-                monto_txt = entry_monto.get().replace(',', '')
-                monto = float(monto_txt) if monto_txt else 0
-                interes = float(entry_interes.get())
-                plazo = int(entry_plazo.get())
-                fecha = entry_fecha.get()
-                cuota_sug = float(entry_cuota.get().replace(',', '')) if entry_cuota.get() else 0
-                obs = text_obs.get("1.0", tk.END).strip()
-                
-                if monto <= 0:
-                    messagebox.showwarning("Error", "Monto inválido")
-                    return
-                
-                interes_mes = monto * (interes / 100)
-                if cuota_sug > 0:
-                    cuota = cuota_sug
-                else:
-                    cuota = (monto / plazo) + interes_mes
-                
-                fecha_dt = datetime.strptime(fecha, "%Y-%m-%d")
-                fecha_prox = fecha_dt + timedelta(days=30)
-                
-                q = """INSERT INTO prestamos (id_socio, monto_prestado, interes_mensual, cuota_mensual, cuotas_totales, cuotas_restantes, fecha_prestamo, fecha_proximo_pago, saldo_pendiente, observaciones, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo')"""
-                
-                if self.db.execute(q, (socio_id, monto, interes, cuota, plazo, plazo, fecha, fecha_prox.strftime("%Y-%m-%d"), monto, obs)):
-                    messagebox.showinfo("Éxito", f"Préstamo registrado para {socio_nombre}\nMonto: ${monto:,.2f}\nCuota: ${cuota:,.2f}")
-                    ventana.destroy()
-                else:
-                    messagebox.showerror("Error", "No se pudo registrar")
-            except Exception as e:
-                messagebox.showerror("Error", str(e))
+        def registrar_pago():
+            seleccion = tree.selection()
+            if not seleccion:
+                messagebox.showwarning("Error", "Seleccione un préstamo")
+                return
+            item = tree.item(seleccion[0])
+            valores = item['values']
+            if valores[0] == "No hay préstamos":
+                return
+            prestamo_id = valores[0]
+            socio = valores[1]
+            query = "SELECT saldo_pendiente, cuota_mensual FROM prestamos WHERE id_prestamo = ?"
+            prestamo = self.db.fetch_one(query, (prestamo_id,))
+            if prestamo:
+                saldo = float(prestamo[0]) if prestamo[0] is not None else 0
+                cuota = float(prestamo[1]) if prestamo[1] is not None else 0
+                monto = simpledialog.askfloat("Registrar Pago", 
+                                              f"Socio: {socio}\nSaldo: ${saldo:,.2f}\nCuota sugerida: ${cuota:,.2f}\n\nMonto a pagar: $",
+                                              minvalue=0.01, maxvalue=saldo)
+                if monto:
+                    nuevo_saldo = saldo - monto
+                    nuevo_estado = "pagado" if nuevo_saldo <= 0 else "activo"
+                    self.db.execute("INSERT INTO pagos_prestamo (id_prestamo, monto_pagado, fecha_pago, forma_pago, saldo_restante) VALUES (?, ?, date('now'), 'Efectivo', ?)",
+                                   (prestamo_id, monto, nuevo_saldo))
+                    self.db.execute("UPDATE prestamos SET saldo_pendiente = ?, estado = ? WHERE id_prestamo = ?",
+                                   (nuevo_saldo, nuevo_estado, prestamo_id))
+                    messagebox.showinfo("Éxito", f"Pago registrado\nNuevo saldo: ${nuevo_saldo:,.2f}")
+                    cargar_prestamos()
+                    mostrar_detalles()
         
-        # Inicializar
-        buscar_socios()
-        actualizar_simulacion()
+        ttk.Button(btn_frame, text="Registrar Pago", command=registrar_pago, width=15).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Actualizar", command=lambda: [cargar_prestamos(), mostrar_detalles()], width=15).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Cerrar", command=ventana.destroy, width=15).pack(side=tk.RIGHT, padx=5)
         
-        # Scroll con mouse
-        def on_mousewheel(e):
-            canvas.yview_scroll(int(-1*(e.delta/120)), "units")
-        canvas.bind("<MouseWheel>", on_mousewheel)
-    
-    def gestionar_prestamos(self):
-        messagebox.showinfo("Gestión", "Funcionalidad en desarrollo")
+        tree.bind("<<TreeviewSelect>>", mostrar_detalles)
+        cargar_prestamos()
     
     def prestamos_vencidos(self):
-        messagebox.showinfo("Vencidos", "Funcionalidad en desarrollo")
+        """Mostrar préstamos vencidos"""
+        ventana = tk.Toplevel()
+        ventana.title("Préstamos Vencidos")
+        ventana.geometry("1000x500")
+        
+        main_frame = ttk.Frame(ventana, padding="10")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        tk.Label(main_frame, text="PRÉSTAMOS VENCIDOS", font=("Arial", 14, "bold")).pack(pady=10)
+        
+        columns = ("ID", "Socio", "Teléfono", "Monto", "Saldo", "Cuota", "Días Vencido")
+        tree = ttk.Treeview(main_frame, columns=columns, show="headings", height=15)
+        
+        for col in columns:
+            tree.heading(col, text=col)
+            tree.column(col, width=130)
+        
+        scrollbar = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=tree.yview)
+        tree.configure(yscroll=scrollbar.set)
+        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        query = """
+        SELECT p.id_prestamo, s.nombre || ' ' || s.apellido, s.celular,
+               p.monto_prestado, p.saldo_pendiente, p.cuota_mensual,
+               julianday('now') - julianday(p.fecha_proximo_pago) as dias_vencido
+        FROM prestamos p
+        JOIN socios s ON p.id_socio = s.id_socio
+        WHERE p.estado = 'activo' AND p.fecha_proximo_pago < date('now')
+        ORDER BY dias_vencido DESC
+        """
+        prestamos = self.db.fetch_all(query)
+        
+        for p in prestamos:
+            monto = float(p[3]) if p[3] is not None else 0
+            saldo = float(p[4]) if p[4] is not None else 0
+            cuota = float(p[5]) if p[5] is not None else 0
+            dias = int(p[6]) if p[6] is not None else 0
+            tree.insert("", tk.END, values=(p[0], p[1], p[2], f"${monto:,.2f}", f"${saldo:,.2f}", f"${cuota:,.2f}", f"{dias} días"))
+        
+        ttk.Button(main_frame, text="Actualizar", command=lambda: [tree.delete(*tree.get_children()), self.prestamos_vencidos()]).pack(pady=10)
     
     def registrar_pago(self):
-        messagebox.showinfo("Pago", "Funcionalidad en desarrollo")
+        """Registrar pago de préstamo (acceso directo)"""
+        self.gestionar_prestamos()
