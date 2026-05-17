@@ -299,7 +299,7 @@ class ModuloPrestamos:
                         (id_socio, monto_prestado, interes_mensual, cuota_mensual,
                         cuotas_totales, cuotas_restantes, fecha_prestamo, fecha_proximo_pago,
                         saldo_pendiente, observaciones, estado, es_externo)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 0)"""
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', FALSE)"""
                     
                     self.db.execute(query, (socio_seleccionado_id, monto, interes, cuota, cuotas, cuotas,
                                             fecha_inicial, fecha_primera, saldo_inicial, obs))
@@ -319,7 +319,7 @@ class ModuloPrestamos:
                         cuotas_totales, cuotas_restantes, fecha_prestamo, fecha_proximo_pago,
                         saldo_pendiente, observaciones, estado, es_externo, nombre_externo,
                         cedula_externa, celular_externo, id_recomendador)
-                        VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 1, ?, ?, ?, ?)"""
+                        VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', TRUE, ?, ?, ?, ?)"""
                     
                     self.db.execute(query, (monto, interes, cuota, cuotas, cuotas, fecha_inicial,
                                             fecha_primera, saldo_inicial, obs,
