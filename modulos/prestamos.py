@@ -617,7 +617,7 @@ class ModuloPrestamos:
         cargar_prestamos()
     
     def prestamos_vencidos(self):
-        """Mostrar préstamos vencidos"""
+        """Mostrar préstamos vencidos - Compatible con PostgreSQL y SQLite"""
         ventana = tk.Toplevel()
         ventana.title("Préstamos Vencidos")
         ventana.geometry("1000x500")
@@ -639,26 +639,56 @@ class ModuloPrestamos:
         tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
+        # Consulta compatible con PostgreSQL y SQLite
+        # Para PostgreSQL usamos EXTRACT, para SQLite usamos julianday
+        # Como database.py ya maneja la conversión, usamos una consulta estándar
+        
         query = """
-        SELECT p.id_prestamo, s.nombre || ' ' || s.apellido, s.celular,
-               p.monto_prestado, p.saldo_pendiente, p.cuota_mensual,
-               julianday('now') - julianday(p.fecha_proximo_pago) as dias_vencido
+        SELECT p.id_prestamo, 
+            COALESCE(s.nombre || ' ' || s.apellido, p.nombre_externo) as socio_nombre,
+            COALESCE(s.celular, p.celular_externo) as telefono,
+            p.monto_prestado, 
+            p.saldo_pendiente, 
+            p.cuota_mensual,
+            p.fecha_proximo_pago
         FROM prestamos p
-        JOIN socios s ON p.id_socio = s.id_socio
-        WHERE p.estado = 'activo' AND p.fecha_proximo_pago < date('now')
-        ORDER BY dias_vencido DESC
+        LEFT JOIN socios s ON p.id_socio = s.id_socio
+        WHERE p.estado = 'activo' 
+        AND p.fecha_proximo_pago < CURRENT_DATE
+        ORDER BY p.fecha_proximo_pago ASC
         """
+        
         prestamos = self.db.fetch_all(query)
+        
+        from datetime import date
         
         for p in prestamos:
             monto = float(p[3]) if p[3] is not None else 0
             saldo = float(p[4]) if p[4] is not None else 0
             cuota = float(p[5]) if p[5] is not None else 0
-            dias = int(p[6]) if p[6] is not None else 0
-            tree.insert("", tk.END, values=(p[0], p[1], p[2], f"${monto:,.2f}", f"${saldo:,.2f}", f"${cuota:,.2f}", f"{dias} días"))
+            fecha_prox = p[6]
+            
+            # Calcular días vencidos manualmente
+            dias_vencido = 0
+            if fecha_prox:
+                try:
+                    fecha_prox_date = datetime.strptime(fecha_prox, "%Y-%m-%d").date()
+                    dias_vencido = (date.today() - fecha_prox_date).days
+                    if dias_vencido < 0:
+                        dias_vencido = 0
+                except:
+                    pass
+            
+            tree.insert("", tk.END, values=(
+                p[0], p[1], p[2], 
+                f"${monto:,.2f}", 
+                f"${saldo:,.2f}", 
+                f"${cuota:,.2f}", 
+                f"{dias_vencido} días"
+            ))
         
         ttk.Button(main_frame, text="Actualizar", command=lambda: [tree.delete(*tree.get_children()), self.prestamos_vencidos()]).pack(pady=10)
-    
+        
     def registrar_pago(self):
         """Registrar pago de préstamo (acceso directo)"""
         self.gestionar_prestamos()
