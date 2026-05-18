@@ -11,8 +11,8 @@ class ModuloPrestamos:
         """Ventana para nuevo préstamo - Socio o Particular"""
         ventana = tk.Toplevel()
         ventana.title("Nuevo Préstamo")
-        ventana.geometry("800x750")
-        ventana.minsize(750, 650)
+        ventana.geometry("800x800")
+        ventana.minsize(750, 700)
         ventana.transient()
         ventana.grab_set()
         
@@ -37,27 +37,28 @@ class ModuloPrestamos:
         tk.Label(main_frame, text="NUEVO PRÉSTAMO", 
                 font=("Arial", 16, "bold"), fg="navy").pack(pady=(0, 20))
         
-        # ========== TIPO DE PRÉSTAMO ==========
-        tipo_frame = ttk.LabelFrame(main_frame, text="TIPO DE PRÉSTAMO", padding="10")
+        # ========== 1. TIPO DE SOLICITANTE ==========
+        tipo_frame = ttk.LabelFrame(main_frame, text="TIPO DE SOLICITANTE", padding="10")
         tipo_frame.pack(fill=tk.X, pady=5)
         
         tipo_var = tk.StringVar(value="socio")
-        ttk.Radiobutton(tipo_frame, text="Préstamo a Socio (registrado)", variable=tipo_var, value="socio", command=lambda: toggle_tipo()).pack(anchor=tk.W, pady=2)
-        ttk.Radiobutton(tipo_frame, text="Préstamo a Particular (no socio)", variable=tipo_var, value="particular", command=lambda: toggle_tipo()).pack(anchor=tk.W, pady=2)
+        ttk.Radiobutton(tipo_frame, text="Socio (registrado)", variable=tipo_var, value="socio", 
+                    command=lambda: toggle_tipo()).pack(anchor=tk.W, pady=2)
+        ttk.Radiobutton(tipo_frame, text="Particular (no socio)", variable=tipo_var, value="particular", 
+                    command=lambda: toggle_tipo()).pack(anchor=tk.W, pady=2)
         
-        # ========== FRAME PARA SOCIO (registrado) ==========
-        socio_frame = ttk.LabelFrame(main_frame, text="SELECCIONAR SOCIO", padding="10")
+        # ========== 2. DATOS DEL SOLICITANTE ==========
+        # Frame para SOCIO
+        socio_frame = ttk.LabelFrame(main_frame, text="DATOS DEL SOCIO", padding="10")
         
-        # Frame de búsqueda
         search_frame = ttk.Frame(socio_frame)
         search_frame.pack(fill=tk.X, pady=5)
         
-        ttk.Label(search_frame, text="Buscar:").pack(side=tk.LEFT, padx=5)
+        ttk.Label(search_frame, text="Buscar socio:").pack(side=tk.LEFT, padx=5)
         entry_buscar = ttk.Entry(search_frame, width=30)
         entry_buscar.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
         ttk.Button(search_frame, text="🔍 Buscar", command=lambda: buscar_socios()).pack(side=tk.LEFT, padx=5)
         
-        # Treeview de socios
         tree_frame = ttk.Frame(socio_frame)
         tree_frame.pack(fill=tk.BOTH, expand=True, pady=5)
         
@@ -65,116 +66,158 @@ class ModuloPrestamos:
         tree_socios = ttk.Treeview(tree_frame, columns=columns, show="headings", height=5)
         for col in columns:
             tree_socios.heading(col, text=col)
-            tree_socios.column(col, width=120)
+            tree_socios.column(col, width=110)
         
         scroll_y = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=tree_socios.yview)
         tree_socios.configure(yscroll=scroll_y.set)
         tree_socios.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
         
-        lbl_socio_seleccionado = tk.Label(socio_frame, text="⚡ Socio seleccionado: Ninguno", font=("Arial", 10, "bold"), fg="green")
+        lbl_socio_seleccionado = tk.Label(socio_frame, text="⚡ Socio seleccionado: Ninguno", 
+                                        font=("Arial", 10, "bold"), fg="green")
         lbl_socio_seleccionado.pack(anchor=tk.W, pady=5)
         
-        # ========== FRAME PARA PARTICULAR ==========
+        # Frame para PARTICULAR
         particular_frame = ttk.LabelFrame(main_frame, text="DATOS DEL PARTICULAR", padding="10")
         
-        # Datos del particular
         ttk.Label(particular_frame, text="Nombre completo:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
-        entry_nombre_particular = ttk.Entry(particular_frame, width=35)
-        entry_nombre_particular.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
+        entry_nombre = ttk.Entry(particular_frame, width=35)
+        entry_nombre.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
         
-        ttk.Label(particular_frame, text="Cédula:").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
-        entry_cedula_particular = ttk.Entry(particular_frame, width=35)
-        entry_cedula_particular.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
+        ttk.Label(particular_frame, text="Número de celular:").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
+        entry_celular = ttk.Entry(particular_frame, width=35)
+        entry_celular.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
         
-        ttk.Label(particular_frame, text="Teléfono:").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
-        entry_celular_particular = ttk.Entry(particular_frame, width=35)
-        entry_celular_particular.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
-        
-        # Socio recomendador
-        ttk.Label(particular_frame, text="Recomendado por (socio):").grid(row=3, column=0, padx=5, pady=5, sticky=tk.W)
+        ttk.Label(particular_frame, text="Recomendado por (socio):").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
         frame_rec = ttk.Frame(particular_frame)
-        frame_rec.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
+        frame_rec.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
         
         entry_buscar_rec = ttk.Entry(frame_rec, width=25)
         entry_buscar_rec.pack(side=tk.LEFT)
         ttk.Button(frame_rec, text="Buscar", command=lambda: buscar_recomendador()).pack(side=tk.LEFT, padx=5)
         
         tree_rec_frame = ttk.Frame(particular_frame)
-        tree_rec_frame.grid(row=4, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
+        tree_rec_frame.grid(row=3, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
         
-        columns_rec = ("ID", "Código", "Nombre", "Cédula")
+        columns_rec = ("ID", "Código", "Nombre")
         tree_recomendador = ttk.Treeview(tree_rec_frame, columns=columns_rec, show="headings", height=3)
         for col in columns_rec:
             tree_recomendador.heading(col, text=col)
-            tree_recomendador.column(col, width=110)
+            tree_recomendador.column(col, width=100)
         
         scroll_rec = ttk.Scrollbar(tree_rec_frame, orient=tk.VERTICAL, command=tree_recomendador.yview)
         tree_recomendador.configure(yscroll=scroll_rec.set)
         tree_recomendador.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scroll_rec.pack(side=tk.RIGHT, fill=tk.Y)
         
-        lbl_recomendador = tk.Label(particular_frame, text="⚡ Recomendador: Ninguno", font=("Arial", 10, "bold"), fg="blue")
-        lbl_recomendador.grid(row=5, column=0, columnspan=2, pady=5, sticky=tk.W)
+        lbl_recomendador = tk.Label(particular_frame, text="⚡ Recomendador: Ninguno", 
+                                    font=("Arial", 10, "bold"), fg="blue")
+        lbl_recomendador.grid(row=4, column=0, columnspan=2, pady=5, sticky=tk.W)
         
-        # ========== DATOS DEL PRÉSTAMO ==========
+        # ========== 3. DATOS DEL PRÉSTAMO ==========
         datos_frame = ttk.LabelFrame(main_frame, text="DATOS DEL PRÉSTAMO", padding="10")
         datos_frame.pack(fill=tk.X, pady=10)
         
-        # Monto
-        ttk.Label(datos_frame, text="Monto del préstamo ($):").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        # Fila 0: Fecha del préstamo
+        ttk.Label(datos_frame, text="Fecha del préstamo:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        entry_fecha = ttk.Entry(datos_frame)
+        entry_fecha.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
+        entry_fecha.insert(0, datetime.now().strftime("%Y-%m-%d"))
+        
+        # Fila 1: Monto
+        ttk.Label(datos_frame, text="Monto ($):").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
         entry_monto = ttk.Entry(datos_frame)
-        entry_monto.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
+        entry_monto.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
         entry_monto.insert(0, "0")
         
-        # Interés mensual
-        ttk.Label(datos_frame, text="Interés mensual (%):").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
-        entry_interes = ttk.Entry(datos_frame)
-        entry_interes.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
-        entry_interes.insert(0, "10")
+        # Fila 2: Interés (%)
+        ttk.Label(datos_frame, text="Interés (%):").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+        combo_interes = ttk.Combobox(datos_frame, values=["5%", "10%"], state="readonly", width=10)
+        combo_interes.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
+        combo_interes.set("5%")
         
-        # Cuotas
-        ttk.Label(datos_frame, text="Número de cuotas:").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
-        entry_cuotas = ttk.Entry(datos_frame)
-        entry_cuotas.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
-        entry_cuotas.insert(0, "12")
+        # Fila 3: Tiempo del préstamo
+        tiempo_frame = ttk.Frame(datos_frame)
+        tiempo_frame.grid(row=3, column=0, columnspan=2, padx=5, pady=5, sticky=tk.W)
         
-        # Abono a capital (opcional)
-        ttk.Label(datos_frame, text="Abono inicial a capital ($):").grid(row=3, column=0, padx=5, pady=5, sticky=tk.W)
-        entry_abono_inicial = ttk.Entry(datos_frame)
-        entry_abono_inicial.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
-        entry_abono_inicial.insert(0, "0")
+        ttk.Label(tiempo_frame, text="Tiempo:").pack(side=tk.LEFT, padx=5)
+        entry_tiempo = ttk.Entry(tiempo_frame, width=10)
+        entry_tiempo.pack(side=tk.LEFT, padx=5)
+        combo_unidad = ttk.Combobox(tiempo_frame, values=["meses", "días"], state="readonly", width=8)
+        combo_unidad.pack(side=tk.LEFT, padx=5)
+        combo_unidad.set("meses")
         
-        # Cuota mensual sugerida
-        ttk.Label(datos_frame, text="Cuota mensual sugerida ($):").grid(row=4, column=0, padx=5, pady=5, sticky=tk.W)
-        entry_cuota_sugerida = ttk.Entry(datos_frame)
-        entry_cuota_sugerida.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
-        entry_cuota_sugerida.insert(0, "0")
+        # Fila 4: Cuota calculada
+        ttk.Label(datos_frame, text="Cuota calculada:").grid(row=4, column=0, padx=5, pady=5, sticky=tk.W)
+        lbl_cuota = tk.Label(datos_frame, text="$0.00", font=("Arial", 12, "bold"), fg="blue")
+        lbl_cuota.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W)
         
-        # Fecha inicial
-        ttk.Label(datos_frame, text="Fecha inicial del préstamo:").grid(row=5, column=0, padx=5, pady=5, sticky=tk.W)
-        entry_fecha_inicial = ttk.Entry(datos_frame)
-        entry_fecha_inicial.grid(row=5, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
-        entry_fecha_inicial.insert(0, datetime.now().strftime("%Y-%m-%d"))
+        # Fila 5: Fecha de pago (próxima cuota o fecha final)
+        ttk.Label(datos_frame, text="Fecha de pago:").grid(row=5, column=0, padx=5, pady=5, sticky=tk.W)
+        entry_fecha_pago = ttk.Entry(datos_frame)
+        entry_fecha_pago.grid(row=5, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
         
-        # Fecha de primera cuota
-        ttk.Label(datos_frame, text="Fecha de primera cuota:").grid(row=6, column=0, padx=5, pady=5, sticky=tk.W)
-        entry_fecha_primera = ttk.Entry(datos_frame)
-        entry_fecha_primera.grid(row=6, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
-        fecha_defecto = (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
-        entry_fecha_primera.insert(0, fecha_defecto)
-        
-        # Observaciones
-        ttk.Label(datos_frame, text="Observaciones:").grid(row=7, column=0, padx=5, pady=5, sticky=tk.W)
+        # Fila 6: Observaciones
+        ttk.Label(datos_frame, text="Observaciones:").grid(row=6, column=0, padx=5, pady=5, sticky=tk.W)
         text_obs = tk.Text(datos_frame, height=3, width=35)
-        text_obs.grid(row=7, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
+        text_obs.grid(row=6, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
         
-        # ========== FUNCIONES ==========
+        # Función para calcular cuota y fecha de pago
+        def calcular_cuota_y_fecha(event=None):
+            try:
+                monto_texto = entry_monto.get().replace(',', '')
+                monto = float(monto_texto) if monto_texto else 0
+                interes_porcentaje = int(combo_interes.get().replace('%', ''))
+                tiempo = int(entry_tiempo.get()) if entry_tiempo.get() else 0
+                unidad = combo_unidad.get()
+                fecha_inicial = entry_fecha.get()
+                
+                if monto > 0 and tiempo > 0:
+                    interes_valor = monto * (interes_porcentaje / 100)
+                    total = monto + interes_valor
+                    
+                    if unidad == "meses":
+                        cuota = total / tiempo
+                        lbl_cuota.config(text=f"${cuota:,.2f} (total ${total:,.2f})")
+                        # Fecha de pago = fecha inicial + (tiempo meses) para la última cuota
+                        try:
+                            fecha_dt = datetime.strptime(fecha_inicial, "%Y-%m-%d")
+                            from dateutil.relativedelta import relativedelta
+                            fecha_final = fecha_dt + relativedelta(months=tiempo)
+                            entry_fecha_pago.delete(0, tk.END)
+                            entry_fecha_pago.insert(0, fecha_final.strftime("%Y-%m-%d"))
+                        except:
+                            pass
+                    else:  # días
+                        cuota = total  # pago único
+                        lbl_cuota.config(text=f"${cuota:,.2f} (pago único)")
+                        # Fecha de pago = fecha inicial + tiempo días
+                        try:
+                            fecha_dt = datetime.strptime(fecha_inicial, "%Y-%m-%d")
+                            fecha_final = fecha_dt + timedelta(days=tiempo)
+                            entry_fecha_pago.delete(0, tk.END)
+                            entry_fecha_pago.insert(0, fecha_final.strftime("%Y-%m-%d"))
+                        except:
+                            pass
+                else:
+                    lbl_cuota.config(text="$0.00")
+            except:
+                lbl_cuota.config(text="$0.00")
+        
+        # Vincular eventos para calcular automáticamente
+        entry_monto.bind("<KeyRelease>", calcular_cuota_y_fecha)
+        combo_interes.bind("<<ComboboxSelected>>", calcular_cuota_y_fecha)
+        entry_tiempo.bind("<KeyRelease>", calcular_cuota_y_fecha)
+        combo_unidad.bind("<<ComboboxSelected>>", calcular_cuota_y_fecha)
+        entry_fecha.bind("<KeyRelease>", calcular_cuota_y_fecha)
+        
+        # ========== VARIABLES ==========
         socio_seleccionado_id = None
         socio_seleccionado_nombre = None
         recomendador_id = None
         recomendador_nombre = None
         
+        # ========== FUNCIONES ==========
         def toggle_tipo():
             if tipo_var.get() == "socio":
                 socio_frame.pack(fill=tk.BOTH, expand=True, pady=10)
@@ -215,10 +258,10 @@ class ModuloPrestamos:
                 tree_recomendador.delete(item)
             
             if not texto:
-                query = "SELECT id_socio, codigo_socio, nombre || ' ' || apellido, cedula FROM socios WHERE estado = 'activo' ORDER BY nombre LIMIT 30"
+                query = "SELECT id_socio, codigo_socio, nombre || ' ' || apellido FROM socios WHERE estado = 'activo' ORDER BY nombre LIMIT 30"
                 socios = self.db.fetch_all(query)
             else:
-                query = "SELECT id_socio, codigo_socio, nombre || ' ' || apellido, cedula FROM socios WHERE estado = 'activo' AND (nombre LIKE ? OR apellido LIKE ? OR cedula LIKE ? OR codigo_socio LIKE ?) ORDER BY nombre LIMIT 30"
+                query = "SELECT id_socio, codigo_socio, nombre || ' ' || apellido FROM socios WHERE estado = 'activo' AND (nombre LIKE ? OR apellido LIKE ? OR cedula LIKE ? OR codigo_socio LIKE ?) ORDER BY nombre LIMIT 30"
                 p = f"%{texto}%"
                 socios = self.db.fetch_all(query, (p, p, p, p))
             
@@ -256,39 +299,41 @@ class ModuloPrestamos:
         entry_monto.bind('<FocusOut>', formatear_monto(entry_monto))
         entry_monto.bind('<FocusIn>', lambda e: entry_monto.delete(0, tk.END))
         
-        entry_abono_inicial.bind('<FocusOut>', formatear_monto(entry_abono_inicial))
-        entry_abono_inicial.bind('<FocusIn>', lambda e: entry_abono_inicial.delete(0, tk.END))
-        
         def registrar_prestamo():
             try:
+                # Obtener valores
+                fecha_prestamo = entry_fecha.get()
                 monto_texto = entry_monto.get().replace(',', '')
                 monto = float(monto_texto) if monto_texto else 0
-                interes = float(entry_interes.get())
-                cuotas = int(entry_cuotas.get())
-                abono_inicial = float(entry_abono_inicial.get().replace(',', '')) if entry_abono_inicial.get() else 0
-                cuota_sugerida = float(entry_cuota_sugerida.get().replace(',', '')) if entry_cuota_sugerida.get() else 0
-                fecha_inicial = entry_fecha_inicial.get()
-                fecha_primera = entry_fecha_primera.get()
+                interes_porcentaje = int(combo_interes.get().replace('%', ''))
+                tiempo = int(entry_tiempo.get()) if entry_tiempo.get() else 0
+                unidad = combo_unidad.get()
                 obs = text_obs.get("1.0", tk.END).strip()
                 
                 if monto <= 0:
                     messagebox.showwarning("Error", "El monto debe ser mayor a cero")
                     return
                 
-                # Calcular saldo después de abono inicial
-                saldo_inicial = monto - abono_inicial
-                if saldo_inicial < 0:
-                    saldo_inicial = 0
+                if tiempo <= 0:
+                    messagebox.showwarning("Error", "El tiempo debe ser mayor a cero")
+                    return
                 
-                # Calcular cuota mensual
-                interes_mensual_calc = saldo_inicial * (interes / 100)
-                if cuota_sugerida > 0:
-                    cuota = cuota_sugerida
-                else:
-                    cuota = (saldo_inicial / cuotas) + interes_mensual_calc
+                # Calcular interés y cuota
+                interes_valor = monto * (interes_porcentaje / 100)
+                total = monto + interes_valor
                 
-                fecha_inicial_dt = datetime.strptime(fecha_inicial, "%Y-%m-%d")
-                fecha_primera_dt = datetime.strptime(fecha_primera, "%Y-%m-%d")
+                if unidad == "meses":
+                    cuota = total / tiempo
+                    cuotas_totales = tiempo
+                    cuotas_restantes = tiempo
+                    fecha_proximo_pago = entry_fecha_pago.get()
+                else:  # días
+                    cuota = total
+                    cuotas_totales = 1
+                    cuotas_restantes = 1
+                    fecha_proximo_pago = entry_fecha_pago.get()
+                
+                saldo_pendiente = total
                 
                 if tipo_var.get() == "socio":
                     if not socio_seleccionado_id:
@@ -299,32 +344,36 @@ class ModuloPrestamos:
                         (id_socio, monto_prestado, interes_mensual, cuota_mensual,
                         cuotas_totales, cuotas_restantes, fecha_prestamo, fecha_proximo_pago,
                         saldo_pendiente, observaciones, estado, es_externo)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', FALSE)"""
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 0)"""
                     
-                    self.db.execute(query, (socio_seleccionado_id, monto, interes, cuota, cuotas, cuotas,
-                                            fecha_inicial, fecha_primera, saldo_inicial, obs))
-                    messagebox.showinfo("Éxito", f"Préstamo aprobado para socio: {socio_seleccionado_nombre}")
-                    
+                    self.db.execute(query, (socio_seleccionado_id, monto, interes_porcentaje, cuota,
+                                            cuotas_totales, cuotas_restantes, fecha_prestamo,
+                                            fecha_proximo_pago, saldo_pendiente, obs))
+                    messagebox.showinfo("Éxito", f"Préstamo registrado para socio: {socio_seleccionado_nombre}\n"
+                                                f"Monto: ${monto:,.2f}\nInterés: {interes_porcentaje}%\n"
+                                                f"Total a pagar: ${total:,.2f}\nCuota: ${cuota:,.2f}")
                 else:
-                    nombre = entry_nombre_particular.get().strip()
-                    cedula = entry_cedula_particular.get().strip()
-                    celular = entry_celular_particular.get().strip()
+                    nombre = entry_nombre.get().strip()
+                    celular = entry_celular.get().strip()
                     
-                    if not nombre or not cedula or not celular:
-                        messagebox.showwarning("Error", "Complete todos los datos del particular")
+                    if not nombre or not celular:
+                        messagebox.showwarning("Error", "Complete nombre y celular del particular")
                         return
                     
                     query = """INSERT INTO prestamos 
                         (id_socio, monto_prestado, interes_mensual, cuota_mensual,
                         cuotas_totales, cuotas_restantes, fecha_prestamo, fecha_proximo_pago,
-                        saldo_pendiente, observaciones, estado, es_externo, nombre_externo,
-                        cedula_externa, celular_externo, id_recomendador)
-                        VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', TRUE, ?, ?, ?, ?)"""
+                        saldo_pendiente, observaciones, estado, es_externo, 
+                        nombre_externo, celular_externo, id_recomendador)
+                        VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 1, ?, ?, ?)"""
                     
-                    self.db.execute(query, (monto, interes, cuota, cuotas, cuotas, fecha_inicial,
-                                            fecha_primera, saldo_inicial, obs,
-                                            nombre, cedula, celular, recomendador_id))
-                    messagebox.showinfo("Éxito", f"Préstamo aprobado para particular: {nombre}")
+                    self.db.execute(query, (monto, interes_porcentaje, cuota,
+                                            cuotas_totales, cuotas_restantes, fecha_prestamo,
+                                            fecha_proximo_pago, saldo_pendiente, obs,
+                                            nombre, celular, recomendador_id))
+                    messagebox.showinfo("Éxito", f"Préstamo registrado para particular: {nombre}\n"
+                                                f"Monto: ${monto:,.2f}\nInterés: {interes_porcentaje}%\n"
+                                                f"Total a pagar: ${total:,.2f}\nCuota: ${cuota:,.2f}")
                 
                 ventana.destroy()
                 
@@ -341,6 +390,7 @@ class ModuloPrestamos:
         # Inicializar
         buscar_socios()
         toggle_tipo()
+        calcular_cuota_y_fecha()
     
     def gestionar_prestamos(self):
         """Gestionar préstamos existentes - Con opciones de modificar y eliminar"""
