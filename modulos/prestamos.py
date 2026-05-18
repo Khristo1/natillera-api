@@ -450,11 +450,11 @@ class ModuloPrestamos:
             for item in tree.get_children():
                 tree.delete(item)
             
-            # Consulta corregida para PostgreSQL (usa TRUE/FALSE, no 0/1)
+            # Consulta para PostgreSQL (usa TRUE/FALSE) y SQLite (usa 0/1) de forma compatible
             query = """
                 SELECT p.id_prestamo, 
                     CASE 
-                        WHEN p.es_externo = TRUE THEN p.nombre_externo 
+                        WHEN p.es_externo = 1 OR p.es_externo = TRUE THEN p.nombre_externo 
                         ELSE s.nombre || ' ' || s.apellido 
                     END as solicitante,
                     p.monto_prestado, 
