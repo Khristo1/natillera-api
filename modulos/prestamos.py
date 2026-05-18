@@ -450,13 +450,9 @@ class ModuloPrestamos:
             for item in tree.get_children():
                 tree.delete(item)
             
-            # Consulta para PostgreSQL (usa TRUE/FALSE) y SQLite (usa 0/1) de forma compatible
+            # Consulta simplificada - primero obtenemos todos los préstamos
             query = """
                 SELECT p.id_prestamo, 
-                    CASE 
-                        WHEN p.es_externo = 1 OR p.es_externo = TRUE THEN p.nombre_externo 
-                        ELSE s.nombre || ' ' || s.apellido 
-                    END as solicitante,
                     p.monto_prestado, 
                     p.interes_mensual, 
                     p.cuota_mensual,
@@ -464,9 +460,11 @@ class ModuloPrestamos:
                     p.cuotas_restantes, 
                     p.saldo_pendiente, 
                     p.estado,
-                    p.fecha_prestamo
+                    p.fecha_prestamo,
+                    p.es_externo,
+                    p.nombre_externo,
+                    p.id_socio
                 FROM prestamos p
-                LEFT JOIN socios s ON p.id_socio = s.id_socio
                 ORDER BY p.fecha_prestamo DESC
             """
             prestamos = self.db.fetch_all(query)
@@ -476,16 +474,25 @@ class ModuloPrestamos:
                 return
             
             for p in prestamos:
-                monto = float(p[2]) if p[2] is not None else 0
-                interes = float(p[3]) if p[3] is not None else 0
-                cuota = float(p[4]) if p[4] is not None else 0
-                saldo = float(p[7]) if p[7] is not None else 0
-                valores = (p[0], p[1], f"${monto:,.2f}", f"{interes}%", f"${cuota:,.2f}",
-                        p[5], p[6], f"${saldo:,.2f}", p[8], p[9])
+                # Obtener el nombre del solicitante
+                if p[9] == 1 or p[9] == True:  # es_externo
+                    solicitante = p[10] if p[10] else "Particular"
+                else:
+                    # Buscar el nombre del socio
+                    socio_query = "SELECT nombre || ' ' || apellido FROM socios WHERE id_socio = ?"
+                    socio = self.db.fetch_one(socio_query, (p[11],))
+                    solicitante = socio[0] if socio else "Socio eliminado"
                 
-                if p[8] == "activo":
+                monto = float(p[1]) if p[1] is not None else 0
+                interes = float(p[2]) if p[2] is not None else 0
+                cuota = float(p[3]) if p[3] is not None else 0
+                saldo = float(p[6]) if p[6] is not None else 0
+                valores = (p[0], solicitante, f"${monto:,.2f}", f"{interes}%", f"${cuota:,.2f}",
+                        p[4], p[5], f"${saldo:,.2f}", p[7], p[8])
+                
+                if p[7] == "activo":
                     tree.insert("", tk.END, values=valores, tags=("activo",))
-                elif p[8] == "pagado":
+                elif p[7] == "pagado":
                     tree.insert("", tk.END, values=valores, tags=("pagado",))
                 else:
                     tree.insert("", tk.END, values=valores, tags=("vencido",))
