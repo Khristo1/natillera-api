@@ -642,7 +642,7 @@ class ModuloPrestamos:
             # Obtener datos actuales del préstamo
             query = """
                 SELECT saldo_pendiente, cuota_mensual, interes_mensual, 
-                    monto_prestado, cuotas_restantes
+                    monto_prestado, cuotas_restantes, monto_prestado
                 FROM prestamos WHERE id_prestamo = ?
             """
             prestamo = self.db.fetch_one(query, (prestamo_actual_id,))
@@ -660,13 +660,16 @@ class ModuloPrestamos:
                 messagebox.showinfo("Información", "Este préstamo ya está pagado")
                 return
             
-            # Calcular interés de la cuota
-            interes_por_cuota = (capital_original / cuotas_restantes) * (interes_porcentaje / 100) if cuotas_restantes > 0 else 0
+            query_interes_fijo = "SELECT interes_mensual FROM prestamos WHERE id_prestamo = ?"
+            interes_fijo = self.db.fetch_one(query_interes_fijo, (prestamo_actual_id,))
+            interes_fijo_valor = float(interes_fijo[0]) if interes_fijo else 0
             
-            # ========== VENTANA DE PAGO CON SCROLL ==========
+            cuotas_a_pagar = 1
+            
+            # ========== VENTANA CON SCROLL ==========
             pago_win = tk.Toplevel(ventana)
             pago_win.title("Registrar Pago")
-            pago_win.geometry("600x650")
+            pago_win.geometry("580x650")
             pago_win.minsize(550, 500)
             pago_win.transient()
             pago_win.grab_set()
@@ -687,45 +690,47 @@ class ModuloPrestamos:
             canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
             scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
             
-            # Frame principal dentro del scroll
+            # Frame principal dentro del scroll (TU LÓGICA ORIGINAL)
             main_frame_pago = ttk.Frame(scrollable_frame, padding="20")
             main_frame_pago.pack(fill=tk.BOTH, expand=True)
             
-            tk.Label(main_frame_pago, text="REGISTRAR PAGO", font=("Arial", 16, "bold")).pack(pady=(0, 20))
+            tk.Label(main_frame_pago, text="REGISTRAR PAGO", font=("Arial", 14, "bold")).pack(pady=(0, 20))
             
-            # ========== INFORMACIÓN DEL PRÉSTAMO ==========
+            # Mostrar información del préstamo
             info_frame = ttk.LabelFrame(main_frame_pago, text="Información del Préstamo", padding="10")
             info_frame.pack(fill=tk.X, pady=10)
             
-            tk.Label(info_frame, text=f"Capital original: ${capital_original:,.2f}", font=("Arial", 10)).pack(anchor=tk.W, pady=2)
-            tk.Label(info_frame, text=f"Saldo actual: ${saldo_actual:,.2f}", font=("Arial", 12, "bold"), fg="red").pack(anchor=tk.W, pady=2)
-            tk.Label(info_frame, text=f"Cuota actual: ${cuota_actual:,.2f}").pack(anchor=tk.W, pady=2)
-            tk.Label(info_frame, text=f"Cuotas restantes: {cuotas_restantes}").pack(anchor=tk.W, pady=2)
-            tk.Label(info_frame, text=f"Interés de esta cuota: ${interes_por_cuota:,.2f}", 
-                    font=("Arial", 10), fg="blue").pack(anchor=tk.W, pady=2)
+            tk.Label(info_frame, text=f"Capital original: ${capital_original:,.2f}", font=("Arial", 10)).pack(anchor=tk.W)
+            tk.Label(info_frame, text=f"Saldo actual: ${saldo_actual:,.2f}", font=("Arial", 11, "bold"), fg="red").pack(anchor=tk.W)
+            tk.Label(info_frame, text=f"Cuota actual: ${cuota_actual:,.2f}").pack(anchor=tk.W)
+            tk.Label(info_frame, text=f"Cuotas restantes: {cuotas_restantes}").pack(anchor=tk.W)
             
-            # ========== TIPO DE PAGO ==========
+            # Calcular interés de la cuota
+            interes_por_cuota = (capital_original / cuotas_restantes) * (interes_porcentaje / 100) if cuotas_restantes > 0 else 0
+            tk.Label(info_frame, text=f"Interés de esta cuota: ${interes_por_cuota:,.2f}", 
+                    font=("Arial", 10), fg="blue").pack(anchor=tk.W)
+            
+            # Tipo de pago
             tipo_frame = ttk.LabelFrame(main_frame_pago, text="Tipo de Pago", padding="10")
             tipo_frame.pack(fill=tk.X, pady=10)
             
             tipo_pago_var = tk.StringVar(value="cuota")
             ttk.Radiobutton(tipo_frame, text="Pago de cuota normal (capital + interés)", 
-                        variable=tipo_pago_var, value="cuota").pack(anchor=tk.W, pady=2)
+                        variable=tipo_pago_var, value="cuota").pack(anchor=tk.W)
             ttk.Radiobutton(tipo_frame, text="Pago total del préstamo (todas las cuotas restantes)", 
-                        variable=tipo_pago_var, value="total").pack(anchor=tk.W, pady=2)
+                        variable=tipo_pago_var, value="total").pack(anchor=tk.W)
             ttk.Radiobutton(tipo_frame, text="Abono extraordinario a capital (solo reduce capital)", 
-                        variable=tipo_pago_var, value="abono").pack(anchor=tk.W, pady=2)
+                        variable=tipo_pago_var, value="abono").pack(anchor=tk.W)
             
-            # ========== MONTO A PAGAR ==========
+            # Monto a pagar
             monto_frame = ttk.LabelFrame(main_frame_pago, text="Monto a Pagar", padding="10")
             monto_frame.pack(fill=tk.X, pady=10)
             
-            ttk.Label(monto_frame, text="Monto ($):", font=("Arial", 10)).pack(anchor=tk.W)
+            ttk.Label(monto_frame, text="Monto ($):").pack(anchor=tk.W)
             entry_monto = ttk.Entry(monto_frame, font=("Arial", 12))
             entry_monto.pack(fill=tk.X, pady=5)
             
-            # Desglose
-            lbl_desglose = tk.Label(monto_frame, text="", font=("Arial", 10), justify=tk.LEFT, fg="green")
+            lbl_desglose = tk.Label(monto_frame, text="", font=("Arial", 10), justify=tk.LEFT)
             lbl_desglose.pack(anchor=tk.W, pady=5)
             
             def actualizar_desglose(*args):
@@ -783,7 +788,7 @@ class ModuloPrestamos:
             entry_monto.bind("<KeyRelease>", lambda e: actualizar_desglose())
             tipo_pago_var.trace_add('write', lambda *args: actualizar_desglose())
             
-            # ========== FORMA DE PAGO ==========
+            # Forma de pago
             forma_frame = ttk.LabelFrame(main_frame_pago, text="Forma de Pago", padding="10")
             forma_frame.pack(fill=tk.X, pady=10)
             
@@ -792,17 +797,13 @@ class ModuloPrestamos:
             combo_forma.pack(fill=tk.X)
             combo_forma.set("Efectivo")
             
-            # ========== FECHA DE PAGO ==========
+            # Fecha de pago
             fecha_frame = ttk.LabelFrame(main_frame_pago, text="Fecha de Pago", padding="10")
             fecha_frame.pack(fill=tk.X, pady=10)
             
             entry_fecha = ttk.Entry(fecha_frame)
             entry_fecha.insert(0, datetime.now().strftime("%Y-%m-%d"))
             entry_fecha.pack(fill=tk.X)
-            
-            # ========== BOTONES ==========
-            btn_frame = ttk.Frame(main_frame_pago)
-            btn_frame.pack(fill=tk.X, pady=20)
             
             def guardar_pago():
                 try:
@@ -850,11 +851,9 @@ class ModuloPrestamos:
                     
                     nuevo_estado = "pagado" if nuevo_saldo <= 0 else "activo"
                     
-                    # Calcular nueva fecha de próxima cuota
                     fecha_actual = datetime.strptime(fecha_pago, "%Y-%m-%d")
                     fecha_proxima = fecha_actual + timedelta(days=30)
                     
-                    # Insertar pago
                     self.db.execute("""
                         INSERT INTO pagos_prestamo 
                         (id_prestamo, monto_pagado, fecha_pago, forma_pago, 
@@ -863,7 +862,6 @@ class ModuloPrestamos:
                     """, (prestamo_actual_id, monto_pagado, fecha_pago, forma_pago,
                         interes_pagado, abono_capital, nuevo_saldo))
                     
-                    # Actualizar préstamo
                     self.db.execute("""
                         UPDATE prestamos 
                         SET saldo_pendiente = ?, cuota_mensual = ?, 
@@ -886,8 +884,12 @@ class ModuloPrestamos:
                 except Exception as e:
                     messagebox.showerror("Error", f"Error al registrar pago: {str(e)}")
             
-            ttk.Button(btn_frame, text="✅ REGISTRAR PAGO", command=guardar_pago, width=18).pack(side=tk.LEFT, padx=10)
-            ttk.Button(btn_frame, text="❌ CANCELAR", command=pago_win.destroy, width=18).pack(side=tk.LEFT, padx=10)
+            # Botones
+            btn_frame_inner = ttk.Frame(main_frame_pago)
+            btn_frame_inner.pack(fill=tk.X, pady=20)
+            
+            ttk.Button(btn_frame_inner, text="REGISTRAR PAGO", command=guardar_pago, width=18).pack(side=tk.LEFT, padx=10)
+            ttk.Button(btn_frame_inner, text="CANCELAR", command=pago_win.destroy, width=18).pack(side=tk.LEFT, padx=10)
             
             # Scroll con rueda del mouse
             def on_mousewheel(event):
@@ -896,9 +898,8 @@ class ModuloPrestamos:
             canvas.bind("<MouseWheel>", on_mousewheel)
             scrollable_frame.bind("<MouseWheel>", on_mousewheel)
             
-            # Actualizar desglose inicial
             actualizar_desglose()
-    
+
     def prestamos_vencidos(self):
         """Mostrar préstamos vencidos - Compatible con PostgreSQL y SQLite"""
         ventana = tk.Toplevel()
