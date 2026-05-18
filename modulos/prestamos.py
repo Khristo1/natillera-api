@@ -450,11 +450,11 @@ class ModuloPrestamos:
             for item in tree.get_children():
                 tree.delete(item)
             
-            # Consulta que incluye socios y particulares
+            # Consulta corregida para PostgreSQL (usa TRUE/FALSE, no 0/1)
             query = """
                 SELECT p.id_prestamo, 
                     CASE 
-                        WHEN p.es_externo = 1 THEN p.nombre_externo 
+                        WHEN p.es_externo = TRUE THEN p.nombre_externo 
                         ELSE s.nombre || ' ' || s.apellido 
                     END as solicitante,
                     p.monto_prestado, 
