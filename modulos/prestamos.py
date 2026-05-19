@@ -341,136 +341,81 @@ class ModuloPrestamos:
         calcular_cuota()
     
     def gestionar_prestamos(self):
-        """Gestionar préstamos existentes - Con scrollbars y diseño responsive"""
+        """Gestionar préstamos existentes"""
         ventana = tk.Toplevel()
         ventana.title("Gestión de Préstamos")
-        ventana.geometry("1400x800")  # Ventana más grande
-        ventana.minsize(1000, 600)    # Tamaño mínimo
+        ventana.geometry("1300x700")
+        ventana.minsize(900, 500)
         
-        # ========== CONTENEDOR PRINCIPAL CON SCROLL GENERAL ==========
-        main_container = ttk.Frame(ventana)
-        main_container.pack(fill=tk.BOTH, expand=True)
-        
-        # Canvas y scrollbar para toda la ventana (scroll general)
-        canvas_principal = tk.Canvas(main_container, highlightthickness=0)
-        scrollbar_principal = ttk.Scrollbar(main_container, orient=tk.VERTICAL, command=canvas_principal.yview)
-        scrollable_frame = ttk.Frame(canvas_principal)
-        
-        scrollable_frame.bind("<Configure>", lambda e: canvas_principal.configure(scrollregion=canvas_principal.bbox("all")))
-        canvas_principal.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas_principal.configure(yscrollcommand=scrollbar_principal.set)
-        
-        canvas_principal.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar_principal.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # Frame principal dentro del scroll
-        main_frame = ttk.Frame(scrollable_frame, padding="10")
+        main_frame = ttk.Frame(ventana, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
         
-        # ========== LISTA DE PRÉSTAMOS CON SCROLL ==========
-        # Frame contenedor del Treeview
-        tree_container = ttk.Frame(main_frame)
-        tree_container.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
-        
-        # Scrollbars para el Treeview
-        scrollbar_y = ttk.Scrollbar(tree_container, orient=tk.VERTICAL)
-        scrollbar_x = ttk.Scrollbar(tree_container, orient=tk.HORIZONTAL)
-        
+        # Treeview
         columns = ("ID", "Solicitante", "Monto", "Interés", "Cuota", "Plazo", "Restantes", "Saldo", "Estado", "Fecha")
-        tree = ttk.Treeview(tree_container, columns=columns, show="headings", height=12,
-                            yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
+        tree = ttk.Treeview(main_frame, columns=columns, show="headings", height=15)
         
-        # Configurar columnas con anchos adecuados
-        col_widths = {"ID": 60, "Solicitante": 200, "Monto": 120, "Interés": 80, 
-                    "Cuota": 120, "Plazo": 70, "Restantes": 80, "Saldo": 130, 
-                    "Estado": 90, "Fecha": 110}
+        col_widths = {"ID": 60, "Solicitante": 200, "Monto": 120, "Interés": 80, "Cuota": 120, 
+                      "Plazo": 70, "Restantes": 80, "Saldo": 130, "Estado": 90, "Fecha": 110}
         
         for col in columns:
             tree.heading(col, text=col)
-            tree.column(col, width=col_widths.get(col, 100), minwidth=50)
+            tree.column(col, width=col_widths.get(col, 100))
         
-        # Configurar scrollbars
-        scrollbar_y.config(command=tree.yview)
-        scrollbar_x.config(command=tree.xview)
+        scrollbar_y = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=tree.yview)
+        scrollbar_x = ttk.Scrollbar(main_frame, orient=tk.HORIZONTAL, command=tree.xview)
+        tree.configure(yscroll=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
         
-        # Posicionar Treeview y scrollbars
-        tree.grid(row=0, column=0, sticky="nsew")
-        scrollbar_y.grid(row=0, column=1, sticky="ns")
-        scrollbar_x.grid(row=1, column=0, sticky="ew")
+        tree.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        scrollbar_y.pack(side=tk.RIGHT, fill=tk.Y)
+        scrollbar_x.pack(side=tk.BOTTOM, fill=tk.X)
         
-        tree_container.grid_rowconfigure(0, weight=1)
-        tree_container.grid_columnconfigure(0, weight=1)
-        
-        # ========== DETALLES DEL PRÉSTAMO CON SCROLL INTERNO ==========
+        # Detalles
         detalles_frame = ttk.LabelFrame(main_frame, text="Detalles del Préstamo Seleccionado", padding="10")
-        detalles_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        detalles_frame.pack(fill=tk.X, pady=10)
         
-        # Canvas interno para detalles (por si hay muchos detalles)
-        detalles_canvas = tk.Canvas(detalles_frame, highlightthickness=0, height=150)
-        detalles_scrollbar = ttk.Scrollbar(detalles_frame, orient=tk.VERTICAL, command=detalles_canvas.yview)
-        detalles_inner = ttk.Frame(detalles_canvas)
-        
-        detalles_inner.bind("<Configure>", lambda e: detalles_canvas.configure(scrollregion=detalles_canvas.bbox("all")))
-        detalles_canvas.create_window((0, 0), window=detalles_inner, anchor="nw")
-        detalles_canvas.configure(yscrollcommand=detalles_scrollbar.set)
-        
-        detalles_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        detalles_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # Labels de detalles (dentro del frame con scroll)
-        lbl_solicitante = tk.Label(detalles_inner, text="Solicitante: ", font=("Arial", 11, "bold"))
+        lbl_solicitante = tk.Label(detalles_frame, text="Solicitante: ", font=("Arial", 11, "bold"))
         lbl_solicitante.pack(anchor=tk.W, pady=2)
         
-        lbl_monto = tk.Label(detalles_inner, text="Monto: $0", font=("Arial", 10))
+        lbl_monto = tk.Label(detalles_frame, text="Monto: $0", font=("Arial", 10))
         lbl_monto.pack(anchor=tk.W, pady=2)
         
-        lbl_interes = tk.Label(detalles_inner, text="Interés: 0%", font=("Arial", 10))
+        lbl_interes = tk.Label(detalles_frame, text="Interés: 0%", font=("Arial", 10))
         lbl_interes.pack(anchor=tk.W, pady=2)
         
-        lbl_saldo = tk.Label(detalles_inner, text="Saldo pendiente: $0", font=("Arial", 11, "bold"), fg="red")
+        lbl_saldo = tk.Label(detalles_frame, text="Saldo pendiente: $0", font=("Arial", 11, "bold"), fg="red")
         lbl_saldo.pack(anchor=tk.W, pady=2)
         
-        lbl_proximo = tk.Label(detalles_inner, text="Próxima cuota: $0", font=("Arial", 10))
-        lbl_proximo.pack(anchor=tk.W, pady=2)
+        lbl_cuota = tk.Label(detalles_frame, text="Próxima cuota: $0", font=("Arial", 10))
+        lbl_cuota.pack(anchor=tk.W, pady=2)
         
-        lbl_fecha = tk.Label(detalles_inner, text="Fecha próximo pago: ", font=("Arial", 10))
+        lbl_fecha = tk.Label(detalles_frame, text="Fecha próximo pago: ", font=("Arial", 10))
         lbl_fecha.pack(anchor=tk.W, pady=2)
         
-        # ========== BOTONES ==========
+        # Botones
         btn_frame = ttk.Frame(main_frame)
         btn_frame.pack(fill=tk.X, pady=10)
         
-        # Configurar grid de botones para que se organicen bien
-        btn_frame.columnconfigure(0, weight=1)
-        btn_frame.columnconfigure(1, weight=1)
-        btn_frame.columnconfigure(2, weight=1)
-        btn_frame.columnconfigure(3, weight=1)
-        btn_frame.columnconfigure(4, weight=1)
-        
-        # ========== FUNCIONES ==========
         prestamo_actual_id = None
         
         def cargar_prestamos():
             for item in tree.get_children():
                 tree.delete(item)
             
-            # Consulta corregida para PostgreSQL
+            # Obtener todos los préstamos
             query = """
                 SELECT p.id_prestamo, 
-                    CASE 
-                        WHEN p.es_externo = TRUE THEN p.nombre_externo 
-                        ELSE s.nombre || ' ' || s.apellido 
-                    END as solicitante,
-                    p.monto_prestado, 
-                    p.interes_mensual, 
-                    p.cuota_mensual,
-                    p.cuotas_totales, 
-                    p.cuotas_restantes, 
-                    p.saldo_pendiente, 
-                    p.estado,
-                    p.fecha_prestamo
+                       p.monto_prestado, 
+                       p.interes_mensual, 
+                       p.cuota_mensual,
+                       p.cuotas_totales, 
+                       p.cuotas_restantes, 
+                       p.saldo_pendiente, 
+                       p.estado,
+                       p.fecha_prestamo,
+                       p.es_externo,
+                       p.nombre_externo,
+                       p.id_socio
                 FROM prestamos p
-                LEFT JOIN socios s ON p.id_socio = s.id_socio
                 ORDER BY p.fecha_prestamo DESC
             """
             prestamos = self.db.fetch_all(query)
@@ -480,16 +425,24 @@ class ModuloPrestamos:
                 return
             
             for p in prestamos:
-                monto = float(p[2]) if p[2] is not None else 0
-                interes = float(p[3]) if p[3] is not None else 0
-                cuota = float(p[4]) if p[4] is not None else 0
-                saldo = float(p[7]) if p[7] is not None else 0
-                valores = (p[0], p[1], f"${monto:,.2f}", f"{interes}%", f"${cuota:,.2f}",
-                        p[5], p[6], f"${saldo:,.2f}", p[8], p[9])
+                # Obtener nombre del solicitante
+                if p[9] == 1:  # es_externo
+                    solicitante = p[10] if p[10] else "Particular"
+                else:
+                    socio_query = "SELECT nombre || ' ' || apellido FROM socios WHERE id_socio = ?"
+                    socio = self.db.fetch_one(socio_query, (p[11],))
+                    solicitante = socio[0] if socio else "Socio eliminado"
                 
-                if p[8] == "activo":
+                monto = float(p[1]) if p[1] is not None else 0
+                interes = float(p[2]) if p[2] is not None else 0
+                cuota = float(p[3]) if p[3] is not None else 0
+                saldo = float(p[6]) if p[6] is not None else 0
+                valores = (p[0], solicitante, f"${monto:,.2f}", f"{interes}%", f"${cuota:,.2f}",
+                          p[4], p[5], f"${saldo:,.2f}", p[7], p[8])
+                
+                if p[7] == "activo":
                     tree.insert("", tk.END, values=valores, tags=("activo",))
-                elif p[8] == "pagado":
+                elif p[7] == "pagado":
                     tree.insert("", tk.END, values=valores, tags=("pagado",))
                 else:
                     tree.insert("", tk.END, values=valores, tags=("vencido",))
@@ -508,9 +461,10 @@ class ModuloPrestamos:
             if valores[0] == "No hay préstamos":
                 return
             prestamo_actual_id = valores[0]
+            
             query = """
                 SELECT saldo_pendiente, cuota_mensual, fecha_proximo_pago, 
-                    interes_mensual, monto_prestado, cuotas_totales, cuotas_restantes
+                       interes_mensual, monto_prestado
                 FROM prestamos WHERE id_prestamo = ?
             """
             prestamo = self.db.fetch_one(query, (prestamo_actual_id,))
@@ -524,40 +478,371 @@ class ModuloPrestamos:
                 lbl_monto.config(text=f"Monto: ${monto:,.2f}")
                 lbl_interes.config(text=f"Interés: {interes}%")
                 lbl_saldo.config(text=f"Saldo pendiente: ${saldo:,.2f}")
-                lbl_proximo.config(text=f"Próxima cuota: ${cuota:,.2f}")
+                lbl_cuota.config(text=f"Próxima cuota: ${cuota:,.2f}")
                 lbl_fecha.config(text=f"Fecha próximo pago: {fecha}")
         
-        # ... (aquí van las funciones modificar_prestamo, eliminar_prestamo, registrar_pago)
-        # Las mantienes igual que antes, solo asegúrate de que estén definidas
-        
-        # Botones
-        btn_pago = ttk.Button(btn_frame, text="💰 Registrar Pago", command=registrar_pago, width=16)
-        btn_pago.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
-        
-        btn_modificar = ttk.Button(btn_frame, text="✏️ Modificar", command=modificar_prestamo, width=16)
-        btn_modificar.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-        
-        btn_eliminar = ttk.Button(btn_frame, text="🗑️ Eliminar", command=eliminar_prestamo, width=16)
-        btn_eliminar.grid(row=0, column=2, padx=5, pady=5, sticky="ew")
-        
-        btn_actualizar = ttk.Button(btn_frame, text="🔄 Actualizar", command=lambda: [cargar_prestamos(), mostrar_detalles()], width=16)
-        btn_actualizar.grid(row=0, column=3, padx=5, pady=5, sticky="ew")
-        
-        btn_cerrar = ttk.Button(btn_frame, text="❌ Cerrar", command=ventana.destroy, width=16)
-        btn_cerrar.grid(row=0, column=4, padx=5, pady=5, sticky="ew")
-        
-        # Eventos
-        tree.bind("<<TreeviewSelect>>", mostrar_detalles)
-        
-        # Scroll con rueda del mouse
-        def on_mousewheel(event):
-            canvas_principal.yview_scroll(int(-1*(event.delta/120)), "units")
-        
-        canvas_principal.bind("<MouseWheel>", on_mousewheel)
-        
-        # Cargar datos iniciales
-        cargar_prestamos()
+        def registrar_pago():
+            nonlocal prestamo_actual_id
+            if not prestamo_actual_id:
+                messagebox.showwarning("Error", "Seleccione un préstamo primero")
+                return
+            
+            # Obtener datos actuales del préstamo
+            query = """
+                SELECT saldo_pendiente, cuota_mensual, interes_mensual, 
+                    monto_prestado, cuotas_restantes
+                FROM prestamos WHERE id_prestamo = ?
+            """
+            prestamo = self.db.fetch_one(query, (prestamo_actual_id,))
+            if not prestamo:
+                messagebox.showerror("Error", "Préstamo no encontrado")
+                return
+            
+            saldo_actual = float(prestamo[0]) if prestamo[0] is not None else 0
+            cuota_actual = float(prestamo[1]) if prestamo[1] is not None else 0
+            interes_porcentaje = float(prestamo[2]) if prestamo[2] is not None else 0
+            capital_original = float(prestamo[3]) if prestamo[3] is not None else 0
+            cuotas_restantes = int(prestamo[4]) if prestamo[4] is not None else 0
+            
+            if saldo_actual <= 0:
+                messagebox.showinfo("Información", "Este préstamo ya está pagado")
+                return
+            
+            # Calcular interés de la cuota
+            interes_por_cuota = (capital_original / cuotas_restantes) * (interes_porcentaje / 100) if cuotas_restantes > 0 else 0
+            
+            # ========== VENTANA DE PAGO CON SCROLL ==========
+            pago_win = tk.Toplevel(ventana)
+            pago_win.title("Registrar Pago")
+            pago_win.geometry("600x650")
+            pago_win.minsize(550, 500)
+            pago_win.transient()
+            pago_win.grab_set()
+            
+            # Contenedor principal con scroll
+            main_container = ttk.Frame(pago_win)
+            main_container.pack(fill=tk.BOTH, expand=True)
+            
+            # Canvas y scrollbar
+            canvas = tk.Canvas(main_container, highlightthickness=0)
+            scrollbar = ttk.Scrollbar(main_container, orient=tk.VERTICAL, command=canvas.yview)
+            scrollable_frame = ttk.Frame(canvas)
+            
+            scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+            canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+            canvas.configure(yscrollcommand=scrollbar.set)
+            
+            canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            
+            # Frame principal dentro del scroll
+            main_frame_pago = ttk.Frame(scrollable_frame, padding="20")
+            main_frame_pago.pack(fill=tk.BOTH, expand=True)
+            
+            tk.Label(main_frame_pago, text="REGISTRAR PAGO", font=("Arial", 16, "bold")).pack(pady=(0, 20))
+            
+            # ========== INFORMACIÓN DEL PRÉSTAMO ==========
+            info_frame = ttk.LabelFrame(main_frame_pago, text="Información del Préstamo", padding="10")
+            info_frame.pack(fill=tk.X, pady=10)
+            
+            tk.Label(info_frame, text=f"Capital original: ${capital_original:,.2f}", font=("Arial", 10)).pack(anchor=tk.W, pady=2)
+            tk.Label(info_frame, text=f"Saldo actual: ${saldo_actual:,.2f}", font=("Arial", 12, "bold"), fg="red").pack(anchor=tk.W, pady=2)
+            tk.Label(info_frame, text=f"Cuota actual: ${cuota_actual:,.2f}").pack(anchor=tk.W, pady=2)
+            tk.Label(info_frame, text=f"Cuotas restantes: {cuotas_restantes}").pack(anchor=tk.W, pady=2)
+            tk.Label(info_frame, text=f"Interés de esta cuota: ${interes_por_cuota:,.2f}", 
+                    font=("Arial", 10), fg="blue").pack(anchor=tk.W, pady=2)
+            
+            # ========== TIPO DE PAGO ==========
+            tipo_frame = ttk.LabelFrame(main_frame_pago, text="Tipo de Pago", padding="10")
+            tipo_frame.pack(fill=tk.X, pady=10)
+            
+            tipo_pago_var = tk.StringVar(value="cuota")
+            ttk.Radiobutton(tipo_frame, text="Pago de cuota normal (capital + interés)", 
+                        variable=tipo_pago_var, value="cuota").pack(anchor=tk.W, pady=2)
+            ttk.Radiobutton(tipo_frame, text="Pago total del préstamo (todas las cuotas restantes)", 
+                        variable=tipo_pago_var, value="total").pack(anchor=tk.W, pady=2)
+            ttk.Radiobutton(tipo_frame, text="Abono extraordinario a capital (solo reduce capital)", 
+                        variable=tipo_pago_var, value="abono").pack(anchor=tk.W, pady=2)
+            
+            # ========== MONTO A PAGAR ==========
+            monto_frame = ttk.LabelFrame(main_frame_pago, text="Monto a Pagar", padding="10")
+            monto_frame.pack(fill=tk.X, pady=10)
+            
+            ttk.Label(monto_frame, text="Monto ($):", font=("Arial", 10)).pack(anchor=tk.W)
+            entry_monto = ttk.Entry(monto_frame, font=("Arial", 12))
+            entry_monto.pack(fill=tk.X, pady=5)
+            
+            # Desglose
+            lbl_desglose = tk.Label(monto_frame, text="", font=("Arial", 10), justify=tk.LEFT, fg="green")
+            lbl_desglose.pack(anchor=tk.W, pady=5)
+            
+            def actualizar_desglose(*args):
+                try:
+                    monto_pagado = float(entry_monto.get().replace(',', ''))
+                    tipo = tipo_pago_var.get()
+                    
+                    if tipo == "cuota":
+                        if monto_pagado >= cuota_actual:
+                            abono_capital = cuota_actual - interes_por_cuota
+                            nuevo_saldo = saldo_actual - abono_capital
+                            nuevas_cuotas = cuotas_restantes - 1
+                            lbl_desglose.config(
+                                text=f"✓ Pago de cuota correcto\n"
+                                    f"   Interés: ${interes_por_cuota:,.2f}\n"
+                                    f"   Abono a capital: ${abono_capital:,.2f}\n"
+                                    f"   Nuevo saldo: ${nuevo_saldo:,.2f}\n"
+                                    f"   Cuotas restantes: {nuevas_cuotas}",
+                                fg="green")
+                        else:
+                            lbl_desglose.config(
+                                text=f"⚠️ El monto (${monto_pagado:,.2f}) es menor que la cuota (${cuota_actual:,.2f})",
+                                fg="red")
+                    
+                    elif tipo == "total":
+                        total_restante = saldo_actual
+                        if monto_pagado >= total_restante:
+                            lbl_desglose.config(
+                                text=f"✓ Pago total del préstamo\n"
+                                    f"   Monto total: ${total_restante:,.2f}\n"
+                                    f"   Nuevo saldo: $0\n"
+                                    f"   Préstamo liquidado",
+                                fg="green")
+                        else:
+                            lbl_desglose.config(
+                                text=f"⚠️ Para liquidar el préstamo debe pagar ${total_restante:,.2f}",
+                                fg="red")
+                    
+                    else:  # abono
+                        if monto_pagado > saldo_actual:
+                            lbl_desglose.config(
+                                text=f"⚠️ El abono (${monto_pagado:,.2f}) excede el saldo (${saldo_actual:,.2f})",
+                                fg="red")
+                        else:
+                            nuevo_saldo = saldo_actual - monto_pagado
+                            nuevas_cuotas = max(1, int(nuevo_saldo / cuota_actual) + (1 if nuevo_saldo % cuota_actual > 0 else 0))
+                            lbl_desglose.config(
+                                text=f"✓ Abono a capital registrado\n"
+                                    f"   Nuevo saldo: ${nuevo_saldo:,.2f}\n"
+                                    f"   Cuotas restantes aprox: {nuevas_cuotas}",
+                                fg="green")
+                except:
+                    lbl_desglose.config(text="Ingrese un monto válido", fg="red")
+            
+            entry_monto.bind("<KeyRelease>", lambda e: actualizar_desglose())
+            tipo_pago_var.trace_add('write', lambda *args: actualizar_desglose())
+            
+            # ========== FORMA DE PAGO ==========
+            forma_frame = ttk.LabelFrame(main_frame_pago, text="Forma de Pago", padding="10")
+            forma_frame.pack(fill=tk.X, pady=10)
+            
+            combo_forma = ttk.Combobox(forma_frame, values=["Efectivo", "Transferencia", "Débito", "Cheque"], 
+                                    state="readonly")
+            combo_forma.pack(fill=tk.X)
+            combo_forma.set("Efectivo")
+            
+            # ========== FECHA DE PAGO ==========
+            fecha_frame = ttk.LabelFrame(main_frame_pago, text="Fecha de Pago", padding="10")
+            fecha_frame.pack(fill=tk.X, pady=10)
+            
+            entry_fecha = ttk.Entry(fecha_frame)
+            entry_fecha.insert(0, datetime.now().strftime("%Y-%m-%d"))
+            entry_fecha.pack(fill=tk.X)
+            
+            # ========== BOTONES ==========
+            btn_frame = ttk.Frame(main_frame_pago)
+            btn_frame.pack(fill=tk.X, pady=20)
+            
+            def guardar_pago():
+                try:
+                    monto_pagado = float(entry_monto.get().replace(',', ''))
+                    forma_pago = combo_forma.get()
+                    fecha_pago = entry_fecha.get()
+                    tipo_pago = tipo_pago_var.get()
+                    
+                    if monto_pagado <= 0:
+                        messagebox.showwarning("Error", "Ingrese un monto válido")
+                        return
+                    
+                    if tipo_pago == "cuota":
+                        if monto_pagado < cuota_actual:
+                            messagebox.showwarning("Error", f"El pago debe ser al menos ${cuota_actual:,.2f}")
+                            return
+                        
+                        interes_pagado = interes_por_cuota
+                        abono_capital = monto_pagado - interes_pagado
+                        nuevo_saldo = saldo_actual - abono_capital
+                        nuevas_cuotas_restantes = cuotas_restantes - 1
+                        nueva_cuota = cuota_actual
+                        
+                    elif tipo_pago == "total":
+                        if monto_pagado < saldo_actual:
+                            messagebox.showwarning("Error", f"Para liquidar debe pagar ${saldo_actual:,.2f}")
+                            return
+                        
+                        interes_pagado = 0
+                        abono_capital = monto_pagado
+                        nuevo_saldo = 0
+                        nuevas_cuotas_restantes = 0
+                        nueva_cuota = 0
+                        
+                    else:  # abono
+                        if monto_pagado > saldo_actual:
+                            messagebox.showwarning("Error", "El abono no puede superar el saldo")
+                            return
+                        
+                        interes_pagado = 0
+                        abono_capital = monto_pagado
+                        nuevo_saldo = saldo_actual - abono_capital
+                        nuevas_cuotas_restantes = cuotas_restantes
+                        nueva_cuota = cuota_actual
+                    
+                    nuevo_estado = "pagado" if nuevo_saldo <= 0 else "activo"
+                    
+                    # Calcular nueva fecha de próxima cuota
+                    fecha_actual = datetime.strptime(fecha_pago, "%Y-%m-%d")
+                    fecha_proxima = fecha_actual + timedelta(days=30)
+                    
+                    # Insertar pago
+                    self.db.execute("""
+                        INSERT INTO pagos_prestamo 
+                        (id_prestamo, monto_pagado, fecha_pago, forma_pago, 
+                        interes_pagado, abono_capital, saldo_restante)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, (prestamo_actual_id, monto_pagado, fecha_pago, forma_pago,
+                        interes_pagado, abono_capital, nuevo_saldo))
+                    
+                    # Actualizar préstamo
+                    self.db.execute("""
+                        UPDATE prestamos 
+                        SET saldo_pendiente = ?, cuota_mensual = ?, 
+                            cuotas_restantes = ?, estado = ?, fecha_proximo_pago = ?
+                        WHERE id_prestamo = ?
+                    """, (nuevo_saldo, nueva_cuota, nuevas_cuotas_restantes, 
+                        nuevo_estado, fecha_proxima.strftime("%Y-%m-%d"), prestamo_actual_id))
+                    
+                    messagebox.showinfo("Éxito", 
+                        f"Pago registrado correctamente\n\n"
+                        f"Monto pagado: ${monto_pagado:,.2f}\n"
+                        f"Interés pagado: ${interes_pagado:,.2f}\n"
+                        f"Abono a capital: ${abono_capital:,.2f}\n"
+                        f"Nuevo saldo: ${nuevo_saldo:,.2f}")
+                    
+                    pago_win.destroy()
+                    cargar_prestamos()
+                    mostrar_detalles()
+                    
+                except Exception as e:
+                    messagebox.showerror("Error", f"Error al registrar pago: {str(e)}")
+            
+            ttk.Button(btn_frame, text="✅ REGISTRAR PAGO", command=guardar_pago, width=18).pack(side=tk.LEFT, padx=10)
+            ttk.Button(btn_frame, text="❌ CANCELAR", command=pago_win.destroy, width=18).pack(side=tk.LEFT, padx=10)
+            
+            # Scroll con rueda del mouse
+            def on_mousewheel(event):
+                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            
+            canvas.bind("<MouseWheel>", on_mousewheel)
+            scrollable_frame.bind("<MouseWheel>", on_mousewheel)
+            
+            # Actualizar desglose inicial
+            actualizar_desglose()
 
+        def modificar_prestamo():
+            nonlocal prestamo_actual_id
+            if not prestamo_actual_id:
+                messagebox.showwarning("Error", "Seleccione un préstamo")
+                return
+            
+            # Obtener datos
+            query = "SELECT monto_prestado, interes_mensual, cuota_mensual, cuotas_totales, cuotas_restantes, estado FROM prestamos WHERE id_prestamo = ?"
+            prestamo = self.db.fetch_one(query, (prestamo_actual_id,))
+            if not prestamo:
+                return
+            
+            mod_win = tk.Toplevel(ventana)
+            mod_win.title("Modificar Préstamo")
+            mod_win.geometry("400x400")
+            mod_win.transient()
+            mod_win.grab_set()
+            
+            ttk.Label(mod_win, text="MODIFICAR PRÉSTAMO", font=("Arial", 14, "bold")).pack(pady=10)
+            
+            frame = ttk.Frame(mod_win, padding="20")
+            frame.pack(fill=tk.BOTH, expand=True)
+            
+            ttk.Label(frame, text="Monto:").grid(row=0, column=0, sticky=tk.W, pady=5)
+            entry_monto = ttk.Entry(frame)
+            entry_monto.grid(row=0, column=1, pady=5)
+            entry_monto.insert(0, str(prestamo[0]))
+            
+            ttk.Label(frame, text="Interés (%):").grid(row=1, column=0, sticky=tk.W, pady=5)
+            entry_interes = ttk.Entry(frame)
+            entry_interes.grid(row=1, column=1, pady=5)
+            entry_interes.insert(0, str(prestamo[1]))
+            
+            ttk.Label(frame, text="Cuota:").grid(row=2, column=0, sticky=tk.W, pady=5)
+            entry_cuota = ttk.Entry(frame)
+            entry_cuota.grid(row=2, column=1, pady=5)
+            entry_cuota.insert(0, str(prestamo[2]))
+            
+            ttk.Label(frame, text="Cuotas totales:").grid(row=3, column=0, sticky=tk.W, pady=5)
+            entry_ct = ttk.Entry(frame)
+            entry_ct.grid(row=3, column=1, pady=5)
+            entry_ct.insert(0, str(prestamo[3]))
+            
+            ttk.Label(frame, text="Cuotas restantes:").grid(row=4, column=0, sticky=tk.W, pady=5)
+            entry_cr = ttk.Entry(frame)
+            entry_cr.grid(row=4, column=1, pady=5)
+            entry_cr.insert(0, str(prestamo[4]))
+            
+            ttk.Label(frame, text="Estado:").grid(row=5, column=0, sticky=tk.W, pady=5)
+            combo_estado = ttk.Combobox(frame, values=["activo", "pagado", "vencido"], state="readonly")
+            combo_estado.grid(row=5, column=1, pady=5)
+            combo_estado.set(prestamo[5])
+            
+            def guardar():
+                try:
+                    self.db.execute("""
+                        UPDATE prestamos SET 
+                            monto_prestado = ?, interes_mensual = ?, cuota_mensual = ?,
+                            cuotas_totales = ?, cuotas_restantes = ?, estado = ?
+                        WHERE id_prestamo = ?
+                    """, (float(entry_monto.get()), float(entry_interes.get()), float(entry_cuota.get()),
+                          int(entry_ct.get()), int(entry_cr.get()), combo_estado.get(), prestamo_actual_id))
+                    messagebox.showinfo("Éxito", "Préstamo modificado")
+                    mod_win.destroy()
+                    cargar_prestamos()
+                    mostrar_detalles()
+                except Exception as e:
+                    messagebox.showerror("Error", str(e))
+            
+            ttk.Button(frame, text="Guardar", command=guardar).grid(row=6, column=0, columnspan=2, pady=20)
+        
+        def eliminar_prestamo():
+            nonlocal prestamo_actual_id
+            if not prestamo_actual_id:
+                messagebox.showwarning("Error", "Seleccione un préstamo")
+                return
+            
+            if messagebox.askyesno("Confirmar", "¿Eliminar este préstamo? No se puede deshacer."):
+                try:
+                    self.db.execute("DELETE FROM pagos_prestamo WHERE id_prestamo = ?", (prestamo_actual_id,))
+                    self.db.execute("DELETE FROM prestamos WHERE id_prestamo = ?", (prestamo_actual_id,))
+                    messagebox.showinfo("Éxito", "Préstamo eliminado")
+                    cargar_prestamos()
+                    mostrar_detalles()
+                except Exception as e:
+                    messagebox.showerror("Error", str(e))
+        
+        ttk.Button(btn_frame, text="Registrar Pago", command=registrar_pago, width=14).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Modificar", command=modificar_prestamo, width=14).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Eliminar", command=eliminar_prestamo, width=14).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Actualizar", command=lambda: [cargar_prestamos(), mostrar_detalles()], width=14).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Cerrar", command=ventana.destroy, width=14).pack(side=tk.RIGHT, padx=5)
+        
+        tree.bind("<<TreeviewSelect>>", mostrar_detalles)
+        cargar_prestamos()
+    
     def prestamos_vencidos(self):
         """Mostrar préstamos vencidos"""
         ventana = tk.Toplevel()
