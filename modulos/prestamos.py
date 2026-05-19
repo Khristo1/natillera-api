@@ -290,7 +290,7 @@ class ModuloPrestamos:
         columns = ("ID", "Solicitante", "Monto", "Interés", "Cuota", "Plazo", "Restantes", "Saldo", "Estado", "Fecha")
         tree = ttk.Treeview(main_frame, columns=columns, show="headings", height=15)
         widths = {"ID": 60, "Solicitante": 200, "Monto": 120, "Interés": 80, "Cuota": 120,
-                "Plazo": 70, "Restantes": 80, "Saldo": 130, "Estado": 90, "Fecha": 110}
+                  "Plazo": 70, "Restantes": 80, "Saldo": 130, "Estado": 90, "Fecha": 110}
         for col in columns:
             tree.heading(col, text=col)
             tree.column(col, width=widths.get(col, 100))
@@ -321,8 +321,6 @@ class ModuloPrestamos:
 
         prestamo_actual_id = None
 
-        # ========== FUNCIONES (DEFINIDAS ANTES DE LOS BOTONES) ==========
-        
         def cargar_prestamos():
             for item in tree.get_children():
                 tree.delete(item)
@@ -374,7 +372,7 @@ class ModuloPrestamos:
         def registrar_pago():
             nonlocal prestamo_actual_id
             if not prestamo_actual_id:
-                messagebox.showwarning("Error", "Seleccione un préstamo")
+                messagebox.showwarning("Seleccione un préstamo")
                 return
             q = "SELECT saldo_pendiente, cuota_mensual FROM prestamos WHERE id_prestamo = ?"
             prestamo = self.db.fetch_one(q, (prestamo_actual_id,))
@@ -384,7 +382,7 @@ class ModuloPrestamos:
             if saldo <= 0:
                 messagebox.showinfo("Préstamo ya pagado")
                 return
-            monto = simpledialog.askfloat("Registrar Pago", f"Saldo actual: ${saldo:,.2f}\nCuota sugerida: ${cuota:,.2f}\n\nMonto a pagar:", minvalue=0.01, maxvalue=saldo)
+            monto = simpledialog.askfloat("Pago", f"Saldo: ${saldo:,.2f}\nCuota sugerida: ${cuota:,.2f}\n\nMonto a pagar:", minvalue=0.01, maxvalue=saldo)
             if monto:
                 nuevo_saldo = saldo - monto
                 nuevo_estado = "pagado" if nuevo_saldo <= 0 else "activo"
@@ -397,7 +395,7 @@ class ModuloPrestamos:
         def modificar_prestamo():
             nonlocal prestamo_actual_id
             if not prestamo_actual_id:
-                messagebox.showwarning("Error", "Seleccione un préstamo")
+                messagebox.showwarning("Seleccione un préstamo")
                 return
             q = "SELECT monto_prestado, interes_mensual, cuota_mensual, cuotas_totales, cuotas_restantes, estado FROM prestamos WHERE id_prestamo = ?"
             prestamo = self.db.fetch_one(q, (prestamo_actual_id,))
@@ -405,60 +403,42 @@ class ModuloPrestamos:
                 return
             win = tk.Toplevel(ventana)
             win.title("Modificar Préstamo")
-            win.geometry("400x450")
-            win.transient()
-            win.grab_set()
+            win.geometry("400x400")
             frame = ttk.Frame(win, padding=20)
             frame.pack(fill=tk.BOTH, expand=True)
-            ttk.Label(frame, text="Monto ($):").grid(row=0, column=0, sticky=tk.W, pady=5)
-            e_monto = ttk.Entry(frame)
-            e_monto.grid(row=0, column=1, pady=5)
-            e_monto.insert(0, str(prestamo[0]))
-            ttk.Label(frame, text="Interés (%):").grid(row=1, column=0, sticky=tk.W, pady=5)
-            e_interes = ttk.Entry(frame)
-            e_interes.grid(row=1, column=1, pady=5)
-            e_interes.insert(0, str(prestamo[1]))
-            ttk.Label(frame, text="Cuota ($):").grid(row=2, column=0, sticky=tk.W, pady=5)
-            e_cuota = ttk.Entry(frame)
-            e_cuota.grid(row=2, column=1, pady=5)
-            e_cuota.insert(0, str(prestamo[2]))
-            ttk.Label(frame, text="Cuotas totales:").grid(row=3, column=0, sticky=tk.W, pady=5)
-            e_ct = ttk.Entry(frame)
-            e_ct.grid(row=3, column=1, pady=5)
-            e_ct.insert(0, str(prestamo[3]))
-            ttk.Label(frame, text="Cuotas restantes:").grid(row=4, column=0, sticky=tk.W, pady=5)
-            e_cr = ttk.Entry(frame)
-            e_cr.grid(row=4, column=1, pady=5)
-            e_cr.insert(0, str(prestamo[4]))
-            ttk.Label(frame, text="Estado:").grid(row=5, column=0, sticky=tk.W, pady=5)
+            ttk.Label(frame, text="Monto:").grid(row=0, column=0, sticky=tk.W)
+            e_monto = ttk.Entry(frame); e_monto.grid(row=0, column=1); e_monto.insert(0, str(prestamo[0]))
+            ttk.Label(frame, text="Interés:").grid(row=1, column=0, sticky=tk.W)
+            e_interes = ttk.Entry(frame); e_interes.grid(row=1, column=1); e_interes.insert(0, str(prestamo[1]))
+            ttk.Label(frame, text="Cuota:").grid(row=2, column=0, sticky=tk.W)
+            e_cuota = ttk.Entry(frame); e_cuota.grid(row=2, column=1); e_cuota.insert(0, str(prestamo[2]))
+            ttk.Label(frame, text="Cuotas totales:").grid(row=3, column=0, sticky=tk.W)
+            e_ct = ttk.Entry(frame); e_ct.grid(row=3, column=1); e_ct.insert(0, str(prestamo[3]))
+            ttk.Label(frame, text="Cuotas restantes:").grid(row=4, column=0, sticky=tk.W)
+            e_cr = ttk.Entry(frame); e_cr.grid(row=4, column=1); e_cr.insert(0, str(prestamo[4]))
+            ttk.Label(frame, text="Estado:").grid(row=5, column=0, sticky=tk.W)
             cb_estado = ttk.Combobox(frame, values=["activo", "pagado", "vencido"], state="readonly")
-            cb_estado.grid(row=5, column=1, pady=5)
-            cb_estado.set(prestamo[5])
+            cb_estado.grid(row=5, column=1); cb_estado.set(prestamo[5])
             def guardar():
-                try:
-                    self.db.execute("UPDATE prestamos SET monto_prestado=?, interes_mensual=?, cuota_mensual=?, cuotas_totales=?, cuotas_restantes=?, estado=? WHERE id_prestamo=?", 
-                                (float(e_monto.get()), float(e_interes.get()), float(e_cuota.get()), int(e_ct.get()), int(e_cr.get()), cb_estado.get(), prestamo_actual_id))
-                    messagebox.showinfo("Éxito", "Préstamo modificado")
-                    win.destroy()
-                    cargar_prestamos()
-                    mostrar_detalles()
-                except Exception as ex:
-                    messagebox.showerror("Error", str(ex))
-            ttk.Button(frame, text="Guardar Cambios", command=guardar).grid(row=6, column=0, columnspan=2, pady=20)
+                self.db.execute("UPDATE prestamos SET monto_prestado=?, interes_mensual=?, cuota_mensual=?, cuotas_totales=?, cuotas_restantes=?, estado=? WHERE id_prestamo=?", (float(e_monto.get()), float(e_interes.get()), float(e_cuota.get()), int(e_ct.get()), int(e_cr.get()), cb_estado.get(), prestamo_actual_id))
+                messagebox.showinfo("Modificado")
+                win.destroy()
+                cargar_prestamos()
+                mostrar_detalles()
+            ttk.Button(frame, text="Guardar", command=guardar).grid(row=6, column=0, columnspan=2, pady=20)
 
         def eliminar_prestamo():
             nonlocal prestamo_actual_id
             if not prestamo_actual_id:
-                messagebox.showwarning("Error", "Seleccione un préstamo")
+                messagebox.showwarning("Seleccione un préstamo")
                 return
-            if messagebox.askyesno("Confirmar", "¿Eliminar permanentemente este préstamo? No se puede deshacer."):
+            if messagebox.askyesno("Confirmar", "¿Eliminar permanentemente?"):
                 self.db.execute("DELETE FROM pagos_prestamo WHERE id_prestamo = ?", (prestamo_actual_id,))
                 self.db.execute("DELETE FROM prestamos WHERE id_prestamo = ?", (prestamo_actual_id,))
-                messagebox.showinfo("Éxito", "Préstamo eliminado")
+                messagebox.showinfo("Eliminado")
                 cargar_prestamos()
                 mostrar_detalles()
 
-        # ========== BOTONES (DESPUÉS DE LAS FUNCIONES) ==========
         ttk.Button(btn_frame, text="Registrar Pago", command=registrar_pago, width=14).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="Modificar", command=modificar_prestamo, width=14).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="Eliminar", command=eliminar_prestamo, width=14).pack(side=tk.LEFT, padx=5)
