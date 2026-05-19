@@ -513,6 +513,34 @@ class ModuloPrestamos:
                 messagebox.showwarning("Error", "Seleccione un préstamo")
                 return
             
+            # ========== FUNCIONES DE FORMATEO ==========
+            def formatear_miles(entry):
+                def _formatear(event=None):
+                    try:
+                        texto = entry.get()
+                        if texto:
+                            # Eliminar formato anterior
+                            limpio = texto.replace('$', '').replace(',', '').strip()
+                            if limpio and limpio.replace('.', '', 1).isdigit():
+                                num = float(limpio)
+                                entry.delete(0, tk.END)
+                                entry.insert(0, f"{num:,.0f}")
+                    except:
+                        pass
+                return _formatear
+
+            def quitar_formato(entry):
+                def _quitar(event=None):
+                    try:
+                        texto = entry.get()
+                        if texto:
+                            limpio = texto.replace('$', '').replace(',', '').strip()
+                            entry.delete(0, tk.END)
+                            entry.insert(0, limpio)
+                    except:
+                        pass
+                return _quitar
+            
             # Obtener datos actuales del préstamo
             q = """SELECT saldo_pendiente, cuota_mensual, interes_mensual, 
                         cuotas_restantes, fecha_proximo_pago, codigo_prestamo
@@ -601,8 +629,8 @@ class ModuloPrestamos:
             entry_monto.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
             entry_monto.bind('<FocusOut>', formatear_miles(entry_monto))
             entry_monto.bind('<FocusIn>', quitar_formato(entry_monto))
-
-            # Abono a capital
+            
+            # Abono a capital (solo para tipo abono)
             ttk.Label(pago_frame, text="Abono a capital ($):").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
             entry_abono = ttk.Entry(pago_frame, width=20)
             entry_abono.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
