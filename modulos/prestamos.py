@@ -913,65 +913,179 @@ class ModuloPrestamos:
         # Agregar botón en btn_frame
         ttk.Button(btn_frame, text="📱 Enviar WhatsApp", command=enviar_recordatorio, width=15).pack(side=tk.LEFT, padx=5)
     
-    def prestamos_vencidos(self):
-        """Mostrar préstamos vencidos"""
+        def prestamos_vencidos(self):
+        """Mostrar préstamos vencidos y próximos a vencer"""
         ventana = tk.Toplevel()
-        ventana.title("Préstamos Vencidos")
-        ventana.geometry("1000x500")
+        ventana.title("Préstamos Vencidos y Próximos")
+        ventana.geometry("1200x600")
+        ventana.minsize(1000, 400)
         
         main_frame = ttk.Frame(ventana, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
         
-        tk.Label(main_frame, text="PRÉSTAMOS VENCIDOS", font=("Arial", 14, "bold")).pack(pady=10)
+        # Título
+        tk.Label(main_frame, text="PRÉSTAMOS VENCIDOS Y PRÓXIMOS A VENCER", 
+                font=("Arial", 14, "bold")).pack(pady=10)
         
-        columns = ("ID", "Solicitante", "Teléfono", "Monto", "Saldo", "Cuota", "Días Vencido")
+        # Frame para filtros
+        filtros_frame = ttk.Frame(main_frame)
+        filtros_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(filtros_frame, text="Mostrar:").pack(side=tk.LEFT, padx=5)
+        combo_filtro = ttk.Combobox(filtros_frame, values=["Todos", "Vencidos", "Próximos (3 días)"], 
+                                    state="readonly", width=15)
+        combo_filtro.pack(side=tk.LEFT, padx=5)
+        combo_filtro.set("Todos")
+        
+        ttk.Button(filtros_frame, text="🔍 Filtrar", 
+                command=lambda: cargar_vencidos()).pack(side=tk.LEFT, padx=10)
+        
+        # Treeview
+        columns = ("ID", "Código", "Solicitante", "Teléfono", "Monto", "Saldo", "Cuota", 
+                "Fecha Vencimiento", "Días Vencido", "Estado")
         tree = ttk.Treeview(main_frame, columns=columns, show="headings", height=15)
+        
+        col_widths = {"ID": 50, "Código": 120, "Solicitante": 180, "Teléfono": 100,
+                    "Monto": 100, "Saldo": 100, "Cuota": 100, "Fecha Vencimiento": 110,
+                    "Días Vencido": 80, "Estado": 80}
         
         for col in columns:
             tree.heading(col, text=col)
-            tree.column(col, width=130)
+            tree.column(col, width=col_widths.get(col, 100))
         
-        scrollbar = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=tree.yview)
-        tree.configure(yscroll=scrollbar.set)
+        scroll_y = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=tree.yview)
+        scroll_x = ttk.Scrollbar(main_frame, orient=tk.HORIZONTAL, command=tree.xview)
+        tree.configure(yscroll=scroll_y.set, xscrollcommand=scroll_x.set)
+        
         tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+        scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
         
-        # Obtener préstamos activos con fecha vencida
-        from datetime import date
-        hoy = date.today()
+        # Frame de resumen
+        resumen_frame = ttk.Frame(main_frame)
+        resumen_frame.pack(fill=tk.X, pady=10)
         
-        query = """
-            SELECT p.id_prestamo, 
-                   CASE WHEN p.es_externo = TRUE THEN p.nombre_externo ELSE s.nombre || ' ' || s.apellido END,
-                   CASE WHEN p.es_externo = TRUE THEN p.celular_externo ELSE s.celular END,
-                   p.monto_prestado, p.saldo_pendiente, p.cuota_mensual,
-                   p.fecha_proximo_pago
-            FROM prestamos p
-            LEFT JOIN socios s ON p.id_socio = s.id_socio
-            WHERE p.estado = 'activo'
-        """
-        prestamos = self.db.fetch_all(query)
+        lbl_total_vencidos = tk.Label(resumen_frame, text="Vencidos: 0", font=("Arial", 11, "bold"), fg="red")
+        lbl_total_vencidos.pack(side=tk.LEFT, padx=20)
         
-        for p in prestamos:
-            fecha_prox = p[6]
-            if fecha_prox:
+        lbl_total_proximos = tk.Label(resumen_frame, text="Próximos (3 días): 0", font=("Arial", 11, "bold"), fg="orange")
+        lbl_total_proximos.pack(side=tk.LEFT, padx=20)
+        
+        lbl_total_saldo = tk.Label(resumen_frame, text="Saldo total vencido: $0", font=("Arial", 11, "bold"), fg="red")
+        lbl_total_saldo.pack(side=tk.LEFT, padx=20)
+        
+        def cargar_vencidos():
+            for item in tree.get_children():
+                tree.delete(item)
+            
+            from datetime import date
+            hoy = date.today()
+            
+            # Consulta para obtener préstamos activos con fecha de próximo pago
+            query = """
+                SELECT p.id_prestamo, p.codigo_prestamo,
+                    CASE WHEN p.es_externo = TRUE THEN p.nombre_externo 
+                            ELSE COALESCE(s.nombre || ' ' || s.apellido, 'Particular')
+                    END as solicitante,
+                    CASE WHEN p.es_externo = TRUE THEN p.celular_externo 
+                            ELSE s.celular
+                    END as telefono,
+                    p.monto_prestado, p.saldo_pendiente, p.cuota_mensual,
+                    p.fecha_proximo_pago, p.estado
+                FROM prestamos p
+                LEFT JOIN socios s ON p.id_socio = s.id_socio
+                WHERE p.estado = 'activo' AND p.fecha_proximo_pago IS NOT NULL
+                ORDER BY p.fecha_proximo_pago ASC
+            """
+            prestamos = self.db.fetch_all(query)
+            
+            vencidos = 0
+            proximos = 0
+            saldo_vencido = 0
+            
+            for p in prestamos:
+                fecha_prox = p[7]
+                if not fecha_prox:
+                    continue
+                
                 try:
-                    fecha_prox_date = datetime.strptime(fecha_prox, "%Y-%m-%d").date()
-                    if fecha_prox_date < hoy:
-                        dias = (hoy - fecha_prox_date).days
-                        monto = float(p[3]) if p[3] else 0
-                        saldo = float(p[4]) if p[4] else 0
-                        cuota = float(p[5]) if p[5] else 0
-                        tree.insert("", tk.END, values=(
-                            p[0], p[1], p[2], 
-                            f"${monto:,.2f}", f"${saldo:,.2f}", f"${cuota:,.2f}", 
-                            f"{dias} días"
-                        ))
-                except:
-                    pass
+                    fecha_venc = datetime.strptime(fecha_prox, "%Y-%m-%d").date()
+                    dias_vencido = (hoy - fecha_venc).days
+                    
+                    monto = float(p[4]) if p[4] else 0
+                    saldo = float(p[5]) if p[5] else 0
+                    cuota = float(p[6]) if p[6] else 0
+                    
+                    filtro = combo_filtro.get()
+                    
+                    # Determinar estado
+                    if dias_vencido > 0:
+                        estado_texto = "VENCIDO"
+                        tag = "vencido"
+                        if filtro == "Todos" or filtro == "Vencidos":
+                            vencidos += 1
+                            saldo_vencido += saldo
+                        else:
+                            continue
+                    elif dias_vencido >= -3:
+                        estado_texto = "PRÓXIMO A VENCER"
+                        tag = "proximo"
+                        if filtro == "Todos" or filtro == "Próximos (3 días)":
+                            proximos += 1
+                        else:
+                            continue
+                    else:
+                        continue  # No mostrar préstamos que no están próximos ni vencidos
+                    
+                    valores = (
+                        p[0], p[1] if p[1] else "S/C", p[2], p[3] if p[3] else "No registrado",
+                        f"${monto:,.2f}", f"${saldo:,.2f}", f"${cuota:,.2f}",
+                        fecha_prox, f"{abs(dias_vencido)} días", estado_texto
+                    )
+                    
+                    tree.insert("", tk.END, values=valores, tags=(tag,))
+                    
+                except Exception as e:
+                    print(f"Error procesando préstamo {p[0]}: {e}")
+            
+            # Configurar colores
+            tree.tag_configure('vencido', foreground='red', background='#FFEBEE')
+            tree.tag_configure('proximo', foreground='orange', background='#FFF8E7')
+            
+            # Actualizar resumen
+            lbl_total_vencidos.config(text=f"Vencidos: {vencidos}")
+            lbl_total_proximos.config(text=f"Próximos (3 días): {proximos}")
+            lbl_total_saldo.config(text=f"Saldo total vencido: ${saldo_vencido:,.2f}")
         
-        ttk.Button(main_frame, text="Actualizar", command=lambda: [tree.delete(*tree.get_children()), self.prestamos_vencidos()]).pack(pady=10)
-    
+        def enviar_recordatorio_seleccionado():
+            seleccion = tree.selection()
+            if not seleccion:
+                messagebox.showwarning("Error", "Seleccione un préstamo")
+                return
+            item = tree.item(seleccion[0])
+            prestamo_id = item['values'][0]
+            
+            # Determinar si es vencido o próximo
+            estado_texto = item['values'][9]
+            tipo = "vencido" if "VENCIDO" in estado_texto else "proximo"
+            
+            # Llamar a la función de envío (asumiendo que existe)
+            if hasattr(self, 'enviar_recordatorio_whatsapp'):
+                self.enviar_recordatorio_whatsapp(prestamo_id, tipo)
+            else:
+                messagebox.showinfo("Info", "Función de envío de WhatsApp no disponible")
+        
+        # Botones
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack(fill=tk.X, pady=10)
+        
+        ttk.Button(btn_frame, text="📱 Enviar WhatsApp", command=enviar_recordatorio_seleccionado, width=18).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="🔄 Actualizar", command=lambda: cargar_vencidos(), width=15).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="❌ Cerrar", command=ventana.destroy, width=15).pack(side=tk.RIGHT, padx=5)
+        
+        # Cargar datos iniciales
+        cargar_vencidos()
+
     def enviar_recordatorio_whatsapp(self, prestamo_id, tipo="vencido"):
         """Enviar recordatorio por WhatsApp"""
         # Obtener datos del préstamo y del socio
