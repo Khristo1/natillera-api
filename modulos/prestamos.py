@@ -492,30 +492,23 @@ class ModuloPrestamos:
                 messagebox.showwarning("Error", "Seleccione un préstamo")
                 return
             
-            # Obtener datos actuales del préstamo
+            # SOLO UNA CONSULTA
             q = """SELECT saldo_pendiente, cuota_mensual, interes_mensual, 
-                        monto_prestado, cuotas_restantes, fecha_proximo_pago
-                FROM prestamos WHERE id_prestamo = ?"""
+                    monto_prestado, cuotas_restantes, fecha_proximo_pago
+            FROM prestamos WHERE id_prestamo = ?"""
             prestamo = self.db.fetch_one(q, (prestamo_actual_id,))
             if not prestamo:
                 messagebox.showerror("Error", "Préstamo no encontrado")
                 return
-
-            # SALDO_PENDIENTE debe ser SOLO EL CAPITAL (sin intereses)
-            capital_pendiente = float(prestamo[0]) if prestamo[0] else 0
+            
+            saldo_actual = float(prestamo[0]) if prestamo[0] else 0
             cuota_actual = float(prestamo[1]) if prestamo[1] else 0
             interes_porcentaje = float(prestamo[2]) if prestamo[2] else 0
-
-            # El interés se calcula sobre el CAPITAL PENDIENTE
-            interes_periodo = capital_pendiente * (interes_porcentaje / 100)
-
-            print(f"DEBUG: capital_pendiente = {capital_pendiente}")  # Debe ser 600,000
-            print(f"DEBUG: interes_periodo = {interes_periodo}")      # Debe ser 60,000
-
-            prestamo = self.db.fetch_one(q, (prestamo_actual_id,))
-            if not prestamo:
-                messagebox.showerror("Error", "Préstamo no encontrado")
-                return
+            capital_original = float(prestamo[3]) if prestamo[3] else 0
+            cuotas_restantes = int(prestamo[4]) if prestamo[4] else 0
+            
+            capital_pendiente = saldo_actual
+            interes_periodo = capital_pendiente * (interes_porcentaje / 100) 
 
             saldo_actual = float(prestamo[0]) if prestamo[0] else 0  # Este es SOLO capital pendiente
             cuota_actual = float(prestamo[1]) if prestamo[1] else 0
@@ -530,11 +523,7 @@ class ModuloPrestamos:
             # Calcular interés del período sobre el capital pendiente
             interes_periodo = capital_pendiente * (interes_porcentaje / 100)
 
-            prestamo = self.db.fetch_one(q, (prestamo_actual_id,))
-            if not prestamo:
-                messagebox.showerror("Error", "Préstamo no encontrado")
-                return
-            
+                        
             saldo_actual = float(prestamo[0]) if prestamo[0] else 0
             cuota_actual = float(prestamo[1]) if prestamo[1] else 0
             interes_porcentaje = float(prestamo[2]) if prestamo[2] else 0
