@@ -960,7 +960,7 @@ class ModuloPrestamos:
             for item in tree.get_children():
                 tree.delete(item)
             
-            from datetime import date
+            from datetime import date, timedelta
             hoy = date.today()
             
             query = """
@@ -972,10 +972,10 @@ class ModuloPrestamos:
                             ELSE s.celular
                     END as telefono,
                     p.monto_prestado, p.saldo_pendiente, p.cuota_mensual,
-                    p.fecha_proximo_pago, p.estado
+                    p.fecha_proximo_pago, p.estado, p.fecha_prestamo
                 FROM prestamos p
                 LEFT JOIN socios s ON p.id_socio = s.id_socio
-                WHERE p.estado = 'activo' AND p.fecha_proximo_pago IS NOT NULL
+                WHERE p.estado = 'activo'
                 ORDER BY p.fecha_proximo_pago ASC
             """
             prestamos = self.db.fetch_all(query)
@@ -986,8 +986,18 @@ class ModuloPrestamos:
             
             for p in prestamos:
                 fecha_prox = p[7]
+                
+                # Si no hay fecha de próximo pago, estimar desde fecha_prestamo + 30 días
                 if not fecha_prox:
-                    continue
+                    fecha_prestamo = p[9] if len(p) > 9 else None
+                    if fecha_prestamo:
+                        try:
+                            fecha_base = datetime.strptime(fecha_prestamo, "%Y-%m-%d").date()
+                            fecha_prox = (fecha_base + timedelta(days=30)).strftime("%Y-%m-%d")
+                        except:
+                            continue
+                    else:
+                        continue
                 
                 try:
                     fecha_venc = datetime.strptime(fecha_prox, "%Y-%m-%d").date()
@@ -1034,7 +1044,7 @@ class ModuloPrestamos:
             lbl_total_vencidos.config(text=f"Vencidos: {vencidos}")
             lbl_total_proximos.config(text=f"Próximos (3 días): {proximos}")
             lbl_total_saldo.config(text=f"Saldo total vencido: ${saldo_vencido:,.2f}")
-        
+
         def enviar_recordatorio_seleccionado():
             seleccion = tree.selection()
             if not seleccion:
