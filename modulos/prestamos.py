@@ -501,27 +501,28 @@ class ModuloPrestamos:
                 messagebox.showwarning("Error", "Seleccione un préstamo")
                 return
             
-            q = """SELECT saldo_pendiente, interes_mensual, cuota_mensual, cuotas_restantes
-                FROM prestamos WHERE id_prestamo = ?"""
+            # Obtener datos
+            q = "SELECT saldo_pendiente, interes_mensual, cuota_mensual FROM prestamos WHERE id_prestamo = ?"
             prestamo = self.db.fetch_one(q, (prestamo_actual_id,))
             if not prestamo:
                 messagebox.showerror("Error", "Préstamo no encontrado")
                 return
             
-            capital = float(prestamo[0])
+            capital = float(prestamo[0])  # Solo capital, sin intereses
             interes = float(prestamo[1])
             cuota = float(prestamo[2])
-            cuotas_rest = int(prestamo[3])
             
             if capital <= 0:
-                messagebox.showinfo("Información", "Este préstamo ya está pagado")
+                messagebox.showinfo("Información", "Préstamo pagado")
                 return
             
+            # Interés del período
             interes_periodo = capital * (interes / 100)
             
+            # Ventana simple
             pago_win = tk.Toplevel(ventana)
             pago_win.title("Registrar Pago")
-            pago_win.geometry("400x350")
+            pago_win.geometry("400x400")
             pago_win.transient()
             pago_win.grab_set()
             
@@ -531,47 +532,76 @@ class ModuloPrestamos:
             tk.Label(frame, text="REGISTRAR PAGO", font=("Arial", 14, "bold")).pack(pady=(0, 20))
             
             tk.Label(frame, text=f"Capital pendiente: ${capital:,.2f}", font=("Arial", 12, "bold"), fg="red").pack(anchor=tk.W)
-            tk.Label(frame, text=f"Interés ({interes}%): ${interes_periodo:,.2f}", fg="blue").pack(anchor=tk.W)
-            tk.Label(frame, text=f"Cuota actual: ${cuota:,.2f}").pack(anchor=tk.W)
+            tk.Label(frame, text=f"Interés del período ({interes}%): ${interes_periodo:,.2f}", fg="blue").pack(anchor=tk.W)
+            tk.Label(frame, text=f"Cuota actual: ${cuota:,.2f}").pack(anchor=tk.W, pady=(0, 10))
             
-            tk.Label(frame, text="\nMonto a pagar ($):").pack(anchor=tk.W)
+            tk.Label(frame, text="Monto a pagar ($):").pack(anchor=tk.W)
             entry_monto = ttk.Entry(frame, font=("Arial", 11))
             entry_monto.pack(fill=tk.X, pady=5)
             entry_monto.insert(0, f"{cuota:,.0f}".replace(',', ''))
             
+            # Label para mostrar desglose
+            lbl_desglose = tk.Label(frame, text="", font=("Arial", 10), fg="green")
+            lbl_desglose.pack(pady=10)
+            
+            def actualizar_desglose(event=None):
+                try:
+                    monto = float(entry_monto.get().replace(',', ''))
+                    if monto >= interes_periodo:
+                        abono = monto - interes_periodo
+                        nuevo_capital = capital - abono
+                        if nuevo_capital < 0:
+                            nuevo_capital = 0
+                        proximo_interes = nuevo_capital * (interes / 100)
+                        lbl_desglose.config(text=f"✅ Interés pagado: ${interes_periodo:,.2f}\n"
+                                                f"✅ Abono a capital: ${abono:,.2f}\n"
+                                                f"✅ Nuevo capital: ${nuevo_capital:,.2f}\n"
+                                                f"✅ Próximo interés: ${proximo_interes:,.2f}")
+                    else:
+                        lbl_desglose.config(text=f"⚠️ El pago no cubre el interés (${interes_periodo:,.2f})", fg="red")
+                except:
+                    pass
+            
+            entry_monto.bind("<KeyRelease>", actualizar_desglose)
+            actualizar_desglose()
+            
             def guardar():
                 try:
-                    monto_pagado = float(entry_monto.get().replace(',', ''))
+                    monto = float(entry_monto.get().replace(',', ''))
                     
-                    if monto_pagado < interes_periodo:
+                    if monto < interes_periodo:
                         messagebox.showwarning("Error", f"Debe pagar al menos el interés: ${interes_periodo:,.2f}")
                         return
                     
                     interes_pagado = interes_periodo
-                    abono_capital = monto_pagado - interes_pagado
+                    abono_capital = monto - interes_pagado
                     nuevo_capital = capital - abono_capital
                     if nuevo_capital < 0:
                         nuevo_capital = 0
                     
-                    nueva_cuota = nuevo_capital + (nuevo_capital * (interes / 100))
-                    nuevas_cuotas = cuotas_rest - 1 if nuevo_capital > 0 else 0
+                    nuevo_interes = nuevo_capital * (interes / 100)
+                    nueva_cuota = nuevo_capital + nuevo_interes
+                    
                     nuevo_estado = "pagado" if nuevo_capital <= 0 else "activo"
                     
-                    self.db.execute("""UPDATE prestamos 
-                        SET saldo_pendiente = ?, cuota_mensual = ?, 
-                            cuotas_restantes = ?, estado = ?
-                        WHERE id_prestamo = ?""",
-                        (nuevo_capital, nueva_cuota, nuevas_cuotas, nuevo_estado, prestamo_actual_id))
+                    # Actualizar préstamo
+                    self.db.execute("""
+                        UPDATE prestamos 
+                        SET saldo_pendiente = ?, cuota_mensual = ?, estado = ?
+                        WHERE id_prestamo = ?
+                    """, (nuevo_capital, nueva_cuota, nuevo_estado, prestamo_actual_id))
                     
-                    self.db.execute("""INSERT INTO pagos_prestamo 
+                    # Insertar pago
+                    self.db.execute("""
+                        INSERT INTO pagos_prestamo 
                         (id_prestamo, monto_pagado, interes_pagado, abono_capital, saldo_restante)
-                        VALUES (?, ?, ?, ?, ?)""",
-                        (prestamo_actual_id, monto_pagado, interes_pagado, abono_capital, nuevo_capital))
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (prestamo_actual_id, monto, interes_pagado, abono_capital, nuevo_capital))
                     
                     messagebox.showinfo("Éxito", 
                         f"✅ Pago registrado\n\n"
-                        f"💰 Monto: ${monto_pagado:,.2f}\n"
-                        f"💸 Interés: ${interes_pagado:,.2f}\n"
+                        f"💰 Pagado: ${monto:,.2f}\n"
+                        f"💸 Interés pagado: ${interes_pagado:,.2f}\n"
                         f"🏦 Abono a capital: ${abono_capital:,.2f}\n"
                         f"📊 Nuevo capital: ${nuevo_capital:,.2f}\n"
                         f"🔄 Nueva cuota: ${nueva_cuota:,.2f}")
@@ -582,7 +612,7 @@ class ModuloPrestamos:
                     
                 except Exception as e:
                     messagebox.showerror("Error", str(e))
-            
+
             ttk.Button(frame, text="REGISTRAR PAGO", command=guardar, width=20).pack(pady=20)
             ttk.Button(frame, text="CANCELAR", command=pago_win.destroy, width=20).pack()
 
