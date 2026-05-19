@@ -492,30 +492,16 @@ class ModuloPrestamos:
                 messagebox.showwarning("Error", "Seleccione un préstamo")
                 return
             
-            # ========== OBTENER DATOS DEL PRÉSTAMO (UNA SOLA VEZ) ==========
-            q = """SELECT saldo_pendiente, cuota_mensual, interes_mensual, 
-                        monto_prestado, cuotas_restantes, fecha_proximo_pago
-                FROM prestamos WHERE id_prestamo = ?"""
+            # Obtener datos
+            q = """SELECT saldo_pendiente, interes_mensual FROM prestamos WHERE id_prestamo = ?"""
             prestamo = self.db.fetch_one(q, (prestamo_actual_id,))
             if not prestamo:
-                messagebox.showerror("Error", "Préstamo no encontrado")
                 return
-            
-            saldo_actual = float(prestamo[0]) if prestamo[0] else 0
-            cuota_actual = float(prestamo[1]) if prestamo[1] else 0
-            interes_porcentaje = float(prestamo[2]) if prestamo[2] else 0
-            capital_original = float(prestamo[3]) if prestamo[3] else 0
-            cuotas_restantes = int(prestamo[4]) if prestamo[4] else 0
-            fecha_prox_pago = prestamo[5] if prestamo[5] else ""
-            
-            if saldo_actual <= 0:
-                messagebox.showinfo("Información", "Este préstamo ya está pagado")
-                return
-            
-            # El capital pendiente es saldo_actual (después de corregir la BD)
-            capital_pendiente = saldo_actual
-            
-            # Calcular interés del período sobre el CAPITAL pendiente
+
+            capital_pendiente = float(prestamo[0])  # Ahora es 600,000
+            interes_porcentaje = float(prestamo[1])
+
+            # Interés del período (correcto)
             interes_periodo = capital_pendiente * (interes_porcentaje / 100)
             
             # ========== VENTANA DE PAGO ==========
