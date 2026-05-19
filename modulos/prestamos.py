@@ -299,7 +299,7 @@ class ModuloPrestamos:
                         (id_socio, monto_prestado, interes_mensual, cuota_mensual,
                          cuotas_totales, cuotas_restantes, fecha_prestamo, fecha_proximo_pago,
                          saldo_pendiente, observaciones, estado, es_externo)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 0)"""
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', FALSE)"""
                     
                     self.db.execute(query, (socio_seleccionado_id, monto, interes, cuota, plazo, plazo,
                                             fecha_prestamo, fecha_pago, total, obs))
@@ -317,7 +317,7 @@ class ModuloPrestamos:
                          cuotas_totales, cuotas_restantes, fecha_prestamo, fecha_proximo_pago,
                          saldo_pendiente, observaciones, estado, es_externo, 
                          nombre_externo, celular_externo, id_recomendador)
-                        VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', 1, ?, ?, ?)"""
+                        VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'activo', TRUE, ?, ?, ?)"""
                     
                     self.db.execute(query, (monto, interes, cuota, plazo, plazo, fecha_prestamo,
                                             fecha_pago, total, obs, nombre, celular, recomendador_id))
@@ -401,21 +401,17 @@ class ModuloPrestamos:
             for item in tree.get_children():
                 tree.delete(item)
             
-            # Obtener todos los préstamos
             query = """
                 SELECT p.id_prestamo, 
-                       p.monto_prestado, 
-                       p.interes_mensual, 
-                       p.cuota_mensual,
-                       p.cuotas_totales, 
-                       p.cuotas_restantes, 
-                       p.saldo_pendiente, 
-                       p.estado,
-                       p.fecha_prestamo,
-                       p.es_externo,
-                       p.nombre_externo,
-                       p.id_socio
+                    CASE 
+                        WHEN p.es_externo = TRUE THEN p.nombre_externo 
+                        ELSE s.nombre || ' ' || s.apellido 
+                    END as solicitante,
+                    p.monto_prestado, p.interes_mensual, p.cuota_mensual,
+                    p.cuotas_totales, p.cuotas_restantes, p.saldo_pendiente, 
+                    p.estado, p.fecha_prestamo, p.codigo_prestamo
                 FROM prestamos p
+                LEFT JOIN socios s ON p.id_socio = s.id_socio
                 ORDER BY p.fecha_prestamo DESC
             """
             prestamos = self.db.fetch_all(query)
