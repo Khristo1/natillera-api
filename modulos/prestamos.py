@@ -493,9 +493,28 @@ class ModuloPrestamos:
                 return
             
             # Obtener datos actuales del préstamo
+            # Obtener datos actuales del préstamo
             q = """SELECT saldo_pendiente, cuota_mensual, interes_mensual, 
                         monto_prestado, cuotas_restantes, fecha_proximo_pago
                 FROM prestamos WHERE id_prestamo = ?"""
+            prestamo = self.db.fetch_one(q, (prestamo_actual_id,))
+            if not prestamo:
+                messagebox.showerror("Error", "Préstamo no encontrado")
+                return
+
+            saldo_actual = float(prestamo[0]) if prestamo[0] else 0  # Este es SOLO capital pendiente
+            cuota_actual = float(prestamo[1]) if prestamo[1] else 0
+            interes_porcentaje = float(prestamo[2]) if prestamo[2] else 0
+            capital_original = float(prestamo[3]) if prestamo[3] else 0
+            cuotas_restantes = int(prestamo[4]) if prestamo[4] else 0
+            fecha_prox_pago = prestamo[5] if prestamo[5] else ""
+
+            # El capital pendiente es el saldo_actual (solo capital)
+            capital_pendiente = saldo_actual
+
+            # Calcular interés del período sobre el capital pendiente
+            interes_periodo = capital_pendiente * (interes_porcentaje / 100)
+
             prestamo = self.db.fetch_one(q, (prestamo_actual_id,))
             if not prestamo:
                 messagebox.showerror("Error", "Préstamo no encontrado")
@@ -749,19 +768,20 @@ class ModuloPrestamos:
                             messagebox.showwarning("Error", "Ingrese al menos un valor para abono o intereses")
                             return
                         
-                        # El interés pagado debe ser al menos el interés del período
+                        # Validar que se pague al menos el interés del período
                         if interes_pagado < interes_periodo:
                             messagebox.showwarning("Error", f"Debe pagar el interés completo del período: ${interes_periodo:,.2f}")
                             return
                         
                         monto_pagado = abono_capital + interes_pagado
                         
-                        # Calcular nuevo saldo (saldo actual - abono a capital)
-                        nuevo_saldo = saldo_actual - abono_capital
+                        # El nuevo saldo es el capital pendiente ACTUAL menos el abono a capital
+                        # NOTA: saldo_actual debe ser SOLO el capital, no incluir intereses
+                        nuevo_saldo = capital_pendiente - abono_capital
                         if nuevo_saldo < 0:
                             nuevo_saldo = 0
                         
-                        # Calcular nueva cuota: nuevo saldo + interés sobre ese saldo
+                        # Calcular nueva cuota: nuevo saldo + interés sobre nuevo saldo
                         if nuevo_saldo > 0:
                             nuevo_interes = nuevo_saldo * (interes_porcentaje / 100)
                             nueva_cuota = nuevo_saldo + nuevo_interes
@@ -769,7 +789,18 @@ class ModuloPrestamos:
                         else:
                             nueva_cuota = 0
                             nuevas_cuotas_restantes = 0
-                    
+                        
+                        # Mostrar en el desglose
+                        if nuevo_saldo > 0:
+                            nuevo_interes_mostrar = nuevo_saldo * (interes_porcentaje / 100)
+                            nueva_cuota_mostrar = nuevo_saldo + nuevo_interes_mostrar
+                            lbl_desglose.config(text=f"💡 Pago parcial:\n"
+                                                    f"   Abono a capital: ${abono_capital:,.2f}\n"
+                                                    f"   Interés pagado: ${interes_pagado:,.2f}\n"
+                                                    f"   Capital pendiente: ${nuevo_saldo:,.2f}\n"
+                                                    f"   ▶ Nuevo interés: ${nuevo_interes_mostrar:,.2f}\n"
+                                                    f"   ▶ Nueva cuota: ${nueva_cuota_mostrar:,.2f}")
+
                     nuevo_estado = "pagado" if nuevo_saldo <= 0 else "activo"
                     
                     # Calcular nueva fecha de próxima cuota
