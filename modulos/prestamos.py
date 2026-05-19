@@ -493,7 +493,6 @@ class ModuloPrestamos:
                 return
             
             # Obtener datos actuales del préstamo
-            # Obtener datos actuales del préstamo
             q = """SELECT saldo_pendiente, cuota_mensual, interes_mensual, 
                         monto_prestado, cuotas_restantes, fecha_proximo_pago
                 FROM prestamos WHERE id_prestamo = ?"""
@@ -502,7 +501,7 @@ class ModuloPrestamos:
                 messagebox.showerror("Error", "Préstamo no encontrado")
                 return
 
-            # saldo_pendiente debe ser SOLO el capital pendiente (sin intereses)
+            # saldo_pendiente = CAPITAL pendiente (sin intereses)
             capital_pendiente = float(prestamo[0]) if prestamo[0] else 0
             cuota_actual = float(prestamo[1]) if prestamo[1] else 0
             interes_porcentaje = float(prestamo[2]) if prestamo[2] else 0
@@ -510,8 +509,12 @@ class ModuloPrestamos:
             cuotas_restantes = int(prestamo[4]) if prestamo[4] else 0
             fecha_prox_pago = prestamo[5] if prestamo[5] else ""
 
-            # Interés del período ACTUAL sobre el capital pendiente
+            # INTERÉS DEL PERÍODO (se calcula UNA SOLA VEZ sobre el capital pendiente)
             interes_periodo = capital_pendiente * (interes_porcentaje / 100)
+
+            print(f"DEBUG: capital_pendiente = {capital_pendiente}")
+            print(f"DEBUG: interes_porcentaje = {interes_porcentaje}")
+            print(f"DEBUG: interes_periodo = {interes_periodo}")
             prestamo = self.db.fetch_one(q, (prestamo_actual_id,))
             if not prestamo:
                 messagebox.showerror("Error", "Préstamo no encontrado")
@@ -780,14 +783,12 @@ class ModuloPrestamos:
                         
                     else:  # parcial
                         if abono_capital == 0 and interes_pagado == 0:
-                            messagebox.showwarning("Error", "Ingrese al menos un valor")
+                            messagebox.showwarning("Error", "Ingrese al menos un valor para abono o intereses")
                             return
                         
-                        # El interés a pagar AHORA es el interés del período
-                        interes_a_pagar = interes_periodo
-                        
-                        if interes_pagado < interes_a_pagar:
-                            messagebox.showwarning("Error", f"Debe pagar el interés: ${interes_a_pagar:,.2f}")
+                        # El interés a pagar ES el interés_periodo (NO se recalcula)
+                        if interes_pagado < interes_periodo:
+                            messagebox.showwarning("Error", f"Debe pagar el interés completo: ${interes_periodo:,.2f}")
                             return
                         
                         monto_pagado = abono_capital + interes_pagado
@@ -797,11 +798,12 @@ class ModuloPrestamos:
                         if nuevo_capital < 0:
                             nuevo_capital = 0
                         
-                        # Para el próximo período, el interés se calculará sobre el nuevo capital
+                        # Para el PRÓXIMO período, calcular nuevo interés sobre el nuevo capital
                         if nuevo_capital > 0:
                             nuevo_interes = nuevo_capital * (interes_porcentaje / 100)
                             nueva_cuota = nuevo_capital + nuevo_interes
                             nuevas_cuotas_restantes = 1
+                            print(f"DEBUG: nuevo_capital = {nuevo_capital}, nuevo_interes = {nuevo_interes}, nueva_cuota = {nueva_cuota}")
                         else:
                             nueva_cuota = 0
                             nuevas_cuotas_restantes = 0
