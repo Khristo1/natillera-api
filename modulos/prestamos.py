@@ -633,10 +633,8 @@ class ModuloPrestamos:
                     observaciones = text_obs.get("1.0", tk.END).strip()
                     
                     if tipo_pago == "normal":
-                        monto_pagado = float(entry_monto.get().replace(',', ''))
-                        if monto_pagado < interes_periodo:
-                            messagebox.showwarning("Error", f"Debe pagar al menos el interés: ${interes_periodo:,.2f}")
-                            return
+                        # Pago normal: se paga la cuota completa
+                        monto_pagado = cuota_actual
                         interes_pagado = interes_periodo
                         abono_capital = monto_pagado - interes_pagado
                         nuevo_capital = capital_pendiente - abono_capital
@@ -645,19 +643,22 @@ class ModuloPrestamos:
                         nueva_cuota = nuevo_capital + (nuevo_capital * (interes_porcentaje / 100)) if nuevo_capital > 0 else 0
                         
                     elif tipo_pago == "total":
+                        # Pago total: se paga todo el capital pendiente
                         monto_pagado = capital_pendiente
                         interes_pagado = 0
                         abono_capital = monto_pagado
                         nuevo_capital = 0
                         nueva_cuota = 0
                         
-                    else:  # abono
+                    else:  # abono con intereses
                         abono_capital = float(entry_abono.get().replace(',', '')) if entry_abono.get() else 0
                         if abono_capital <= 0:
                             messagebox.showwarning("Error", "Ingrese un monto para abonar")
                             return
-                        monto_pagado = abono_capital
-                        interes_pagado = 0
+                        
+                        # Primero se pagan los intereses del período
+                        interes_pagado = interes_periodo
+                        monto_pagado = interes_pagado + abono_capital
                         nuevo_capital = capital_pendiente - abono_capital
                         if nuevo_capital < 0:
                             nuevo_capital = 0
@@ -689,10 +690,8 @@ class ModuloPrestamos:
                     # Mostrar resumen
                     resumen = f"✅ Pago registrado\n\n"
                     resumen += f"💰 Monto: ${monto_pagado:,.2f}\n"
-                    if interes_pagado > 0:
-                        resumen += f"💸 Interés pagado: ${interes_pagado:,.2f}\n"
-                    if abono_capital > 0:
-                        resumen += f"🏦 Abono a capital: ${abono_capital:,.2f}\n"
+                    resumen += f"💸 Interés pagado: ${interes_pagado:,.2f}\n"
+                    resumen += f"🏦 Abono a capital: ${abono_capital:,.2f}\n"
                     resumen += f"📊 Nuevo capital: ${nuevo_capital:,.2f}\n"
                     if nueva_cuota > 0:
                         resumen += f"🔄 Nueva cuota: ${nueva_cuota:,.2f}\n"
@@ -704,7 +703,7 @@ class ModuloPrestamos:
                     
                 except Exception as e:
                     messagebox.showerror("Error", f"Error: {str(e)}")
-            
+
             # Vincular eventos
             tipo_pago_var.trace_add('write', lambda *args: actualizar_campos())
             actualizar_campos()
