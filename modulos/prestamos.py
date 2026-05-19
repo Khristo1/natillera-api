@@ -495,15 +495,13 @@ class ModuloPrestamos:
                 lbl_cuota.config(text=f"Próxima cuota: ${cuota:,.2f}")
                 lbl_fecha.config(text=f"Fecha próximo pago: {fecha}")
         
-        def registrar_pago(self):
+        def registrar_pago():
             nonlocal prestamo_actual_id
             if not prestamo_actual_id:
                 messagebox.showwarning("Error", "Seleccione un préstamo")
                 return
             
-            # Obtener datos del préstamo
-            q = """SELECT saldo_pendiente, interes_mensual, cuota_mensual, 
-                        cuotas_restantes
+            q = """SELECT saldo_pendiente, interes_mensual, cuota_mensual, cuotas_restantes
                 FROM prestamos WHERE id_prestamo = ?"""
             prestamo = self.db.fetch_one(q, (prestamo_actual_id,))
             if not prestamo:
@@ -519,10 +517,8 @@ class ModuloPrestamos:
                 messagebox.showinfo("Información", "Este préstamo ya está pagado")
                 return
             
-            # Interés del período = capital * (interés / 100)
             interes_periodo = capital * (interes / 100)
             
-            # Ventana de pago
             pago_win = tk.Toplevel(ventana)
             pago_win.title("Registrar Pago")
             pago_win.geometry("400x350")
@@ -535,7 +531,7 @@ class ModuloPrestamos:
             tk.Label(frame, text="REGISTRAR PAGO", font=("Arial", 14, "bold")).pack(pady=(0, 20))
             
             tk.Label(frame, text=f"Capital pendiente: ${capital:,.2f}", font=("Arial", 12, "bold"), fg="red").pack(anchor=tk.W)
-            tk.Label(frame, text=f"Interés del período ({interes}%): ${interes_periodo:,.2f}", fg="blue").pack(anchor=tk.W)
+            tk.Label(frame, text=f"Interés ({interes}%): ${interes_periodo:,.2f}", fg="blue").pack(anchor=tk.W)
             tk.Label(frame, text=f"Cuota actual: ${cuota:,.2f}").pack(anchor=tk.W)
             
             tk.Label(frame, text="\nMonto a pagar ($):").pack(anchor=tk.W)
@@ -557,12 +553,10 @@ class ModuloPrestamos:
                     if nuevo_capital < 0:
                         nuevo_capital = 0
                     
-                    # Nueva cuota = nuevo_capital + (nuevo_capital * interés / 100)
                     nueva_cuota = nuevo_capital + (nuevo_capital * (interes / 100))
                     nuevas_cuotas = cuotas_rest - 1 if nuevo_capital > 0 else 0
                     nuevo_estado = "pagado" if nuevo_capital <= 0 else "activo"
                     
-                    # Guardar
                     self.db.execute("""UPDATE prestamos 
                         SET saldo_pendiente = ?, cuota_mensual = ?, 
                             cuotas_restantes = ?, estado = ?
