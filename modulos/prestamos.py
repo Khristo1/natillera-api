@@ -599,13 +599,17 @@ class ModuloPrestamos:
             ttk.Label(pago_frame, text="Monto total a pagar ($):").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
             entry_monto = ttk.Entry(pago_frame, width=20, font=("Arial", 11))
             entry_monto.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
-            
-            # Abono a capital (solo para tipo abono)
+            entry_monto.bind('<FocusOut>', formatear_miles(entry_monto))
+            entry_monto.bind('<FocusIn>', quitar_formato(entry_monto))
+
+            # Abono a capital
             ttk.Label(pago_frame, text="Abono a capital ($):").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
             entry_abono = ttk.Entry(pago_frame, width=20)
             entry_abono.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
             entry_abono.insert(0, "0")
             entry_abono.config(state="disabled")
+            entry_abono.bind('<FocusOut>', formatear_miles(entry_abono))
+            entry_abono.bind('<FocusIn>', quitar_formato(entry_abono))
             
             # Fecha de pago
             ttk.Label(pago_frame, text="Fecha de pago:").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
