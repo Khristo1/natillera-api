@@ -960,7 +960,7 @@ class ModuloPrestamos:
             for item in tree.get_children():
                 tree.delete(item)
             
-            from datetime import date, timedelta
+            from datetime import date, datetime as dt
             hoy = date.today()
             
             query = """
@@ -987,20 +987,19 @@ class ModuloPrestamos:
             for p in prestamos:
                 fecha_prox = p[7]
                 
-                # Si no hay fecha de próximo pago, estimar desde fecha_prestamo + 30 días
-                if not fecha_prox:
-                    fecha_prestamo = p[9] if len(p) > 9 else None
-                    if fecha_prestamo:
-                        try:
-                            fecha_base = datetime.strptime(fecha_prestamo, "%Y-%m-%d").date()
-                            fecha_prox = (fecha_base + timedelta(days=30)).strftime("%Y-%m-%d")
-                        except:
-                            continue
-                    else:
-                        continue
+                # Manejar fecha_proximo_pago (puede ser string o date)
+                if fecha_prox is None:
+                    continue
                 
                 try:
-                    fecha_venc = datetime.strptime(fecha_prox, "%Y-%m-%d").date()
+                    # Si es un objeto date, convertirlo a string
+                    if isinstance(fecha_prox, date):
+                        fecha_prox_str = fecha_prox.strftime("%Y-%m-%d")
+                        fecha_venc = fecha_prox
+                    else:
+                        fecha_prox_str = str(fecha_prox)
+                        fecha_venc = dt.strptime(fecha_prox_str, "%Y-%m-%d").date()
+                    
                     dias_vencido = (hoy - fecha_venc).days
                     
                     monto = float(p[4]) if p[4] else 0
@@ -1030,7 +1029,7 @@ class ModuloPrestamos:
                     valores = (
                         p[0], p[1] if p[1] else "S/C", p[2], p[3] if p[3] else "No registrado",
                         f"${monto:,.2f}", f"${saldo:,.2f}", f"${cuota:,.2f}",
-                        fecha_prox, f"{abs(dias_vencido)} días", estado_texto
+                        fecha_prox_str, f"{abs(dias_vencido)} días", estado_texto
                     )
                     
                     tree.insert("", tk.END, values=valores, tags=(tag,))
