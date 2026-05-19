@@ -749,16 +749,23 @@ class ModuloPrestamos:
                             messagebox.showwarning("Error", "Ingrese al menos un valor para abono o intereses")
                             return
                         
+                        # El interés pagado debe ser al menos el interés del período
+                        if interes_pagado < interes_periodo:
+                            messagebox.showwarning("Error", f"Debe pagar el interés completo del período: ${interes_periodo:,.2f}")
+                            return
+                        
                         monto_pagado = abono_capital + interes_pagado
+                        
+                        # Calcular nuevo saldo (saldo actual - abono a capital)
                         nuevo_saldo = saldo_actual - abono_capital
                         if nuevo_saldo < 0:
                             nuevo_saldo = 0
                         
-                        # CORRECCIÓN: recalcular cuota basada en el nuevo saldo
-                        if nuevo_saldo > 0 and cuotas_restantes > 0:
-                            nuevo_interes_periodo = nuevo_saldo * (interes_porcentaje / 100)
-                            nueva_cuota = (nuevo_saldo / cuotas_restantes) + nuevo_interes_periodo
-                            nuevas_cuotas_restantes = cuotas_restantes
+                        # Calcular nueva cuota: nuevo saldo + interés sobre ese saldo
+                        if nuevo_saldo > 0:
+                            nuevo_interes = nuevo_saldo * (interes_porcentaje / 100)
+                            nueva_cuota = nuevo_saldo + nuevo_interes
+                            nuevas_cuotas_restantes = 1
                         else:
                             nueva_cuota = 0
                             nuevas_cuotas_restantes = 0
@@ -807,7 +814,7 @@ class ModuloPrestamos:
                     
                 except Exception as e:
                     messagebox.showerror("Error", f"Error al registrar pago: {str(e)}")
-
+            
             # Botones
             btn_frame_pago = ttk.Frame(main_frame_pago)
             btn_frame_pago.pack(fill=tk.X, pady=20)
