@@ -4,6 +4,7 @@ from tkinter import ttk, messagebox
 import sqlite3
 import os
 import sys
+from modulos import reportes_prestamos
 
 # Importar módulos
 from modulos import socios, aportes, prestamos, actividades, reportes, database
@@ -29,6 +30,7 @@ class NatilleraApp:
         self.modulo_prestamos = prestamos.ModuloPrestamos(self.db)
         self.modulo_actividades = actividades.ModuloActividades(self.db)
         self.modulo_reportes = reportes.ModuloReportes(self.db)
+        self.modulo_reportes_prestamos = reportes_prestamos.ReportesPrestamos(self.db)
         
         # Configurar interfaz
         self.setup_ui()
@@ -103,16 +105,23 @@ class NatilleraApp:
         menu_reportes = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Reportes", menu=menu_reportes)
         menu_reportes.add_command(label="Reporte General", 
-                                 command=self.modulo_reportes.reporte_general)
+                                command=self.modulo_reportes.reporte_general)
         menu_reportes.add_command(label="Reporte por Socio", 
-                                 command=self.modulo_reportes.reporte_por_socio)
+                                command=self.modulo_reportes.reporte_por_socio)
+        menu_reportes.add_separator()
+        # NUEVAS OPCIONES - REPORTES DE PRÉSTAMOS
+        menu_reportes.add_command(label="📊 Reporte General de Préstamos", 
+                                command=self.modulo_reportes_prestamos.reporte_general_prestamos)
+        menu_reportes.add_command(label="👤 Reporte de Préstamos por Socio", 
+                                command=self.modulo_reportes_prestamos.reporte_prestamos_socio)
+        menu_reportes.add_separator()
         menu_reportes.add_command(label="Estado de Cuentas", 
-                                 command=self.modulo_reportes.estado_cuentas)
+                                command=self.modulo_reportes.estado_cuentas)
         menu_reportes.add_command(label="Flujo de Caja", 
-                                 command=self.modulo_reportes.flujo_caja)
+                                command=self.modulo_reportes.flujo_caja)
         menu_reportes.add_separator()
         menu_reportes.add_command(label="Generar PDF", 
-                                 command=self.modulo_reportes.generar_pdf)
+                                command=self.modulo_reportes.generar_pdf)
         
         # ====== MENÚ CONFIGURACIÓN ======
         menu_config = tk.Menu(menubar, tearoff=0)
