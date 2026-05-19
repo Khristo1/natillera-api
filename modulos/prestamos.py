@@ -784,20 +784,46 @@ class ModuloPrestamos:
                         nueva_cuota = 0
                         
                     else:  # parcial
-                        print("=== PAGO PARCIAL ===")
-                        print(f"abono_capital ingresado: {abono_capital}")
-                        print(f"interes_pagado ingresado: {interes_pagado}")
-                        print(f"saldo_actual antes: {saldo_actual}")
+                        if abono_capital == 0 and interes_pagado == 0:
+                            messagebox.showwarning("Error", "Ingrese al menos un valor para abono o intereses")
+                            return
                         
-                        # Calcular nuevo saldo
-                        nuevo_saldo = saldo_actual - abono_capital
-                        print(f"nuevo_saldo calculado: {nuevo_saldo}")
+                        # CAPITAL PENDIENTE ACTUAL (sin intereses)
+                        capital_pendiente = saldo_actual
                         
-                        if nuevo_saldo > 0:
-                            nuevo_interes = nuevo_saldo * (interes_porcentaje / 100)
-                            nueva_cuota = nuevo_saldo + nuevo_interes
-                            print(f"nuevo_interes: {nuevo_interes}")
-                            print(f"nueva_cuota: {nueva_cuota}")
+                        # El interés que se debe pagar AHORA se calcula sobre el capital pendiente ACTUAL
+                        interes_a_pagar = capital_pendiente * (interes_porcentaje / 100)
+                        
+                        # Validar que se pague el interés completo
+                        if interes_pagado < interes_a_pagar:
+                            messagebox.showwarning("Error", f"Debe pagar el interés completo: ${interes_a_pagar:,.2f}")
+                            return
+                        
+                        monto_pagado = abono_capital + interes_pagado
+                        
+                        # Nuevo capital pendiente = capital actual - abono
+                        nuevo_capital = capital_pendiente - abono_capital
+                        if nuevo_capital < 0:
+                            nuevo_capital = 0
+                        
+                        # Para el PRÓXIMO período, el interés se calculará sobre el nuevo capital
+                        if nuevo_capital > 0:
+                            nuevo_interes = nuevo_capital * (interes_porcentaje / 100)
+                            nueva_cuota = nuevo_capital + nuevo_interes
+                            nuevas_cuotas_restantes = 1
+                        else:
+                            nueva_cuota = 0
+                            nuevas_cuotas_restantes = 0
+                        
+                        # DEPURACIÓN
+                        print(f"\n=== CÁLCULO PAGO PARCIAL ===")
+                        print(f"Capital pendiente: ${capital_pendiente:,.2f}")
+                        print(f"Interés a pagar (10%): ${interes_a_pagar:,.2f}")
+                        print(f"Abono a capital: ${abono_capital:,.2f}")
+                        print(f"Nuevo capital: ${nuevo_capital:,.2f}")
+                        print(f"Nuevo interés (10%): ${nuevo_interes if nuevo_capital > 0 else 0:,.2f}")
+                        print(f"Nueva cuota: ${nueva_cuota if nuevo_capital > 0 else 0:,.2f}")
+
                         if abono_capital == 0 and interes_pagado == 0:
                             messagebox.showwarning("Error", "Ingrese al menos un valor para abono o intereses")
                             return
@@ -850,6 +876,7 @@ class ModuloPrestamos:
                     """, (prestamo_actual_id, monto_pagado, fecha_pago, forma_pago,
                         interes_pagado, abono_capital, nuevo_saldo, observaciones))
                     
+                                     
                     # Actualizar préstamo
                     self.db.execute("""
                         UPDATE prestamos 
@@ -858,6 +885,19 @@ class ModuloPrestamos:
                         WHERE id_prestamo = ?
                     """, (nuevo_saldo, nueva_cuota, nuevas_cuotas_restantes, 
                         nuevo_estado, fecha_proxima.strftime("%Y-%m-%d"), prestamo_actual_id))
+
+                    # ========== CÓDIGO DE VERIFICACIÓN (AGREGAR AQUÍ) ==========
+                    try:
+                        verificar = self.db.fetch_one("SELECT saldo_pendiente, cuota_mensual, interes_mensual FROM prestamos WHERE id_prestamo = ?", (prestamo_actual_id,))
+                        print("\n" + "=" * 50)
+                        print("VERIFICACIÓN DESPUÉS DE GUARDAR:")
+                        print(f"   saldo_pendiente: ${verificar[0]:,.2f}")
+                        print(f"   cuota_mensual: ${verificar[1]:,.2f}")
+                        print(f"   interes_mensual: {verificar[2]}%")
+                        print("=" * 50 + "\n")
+                    except Exception as e:
+                        print(f"Error en verificación: {e}")
+                    # ===========================================================
                     
                     # Mostrar resumen
                     resumen = f"✅ Pago registrado exitosamente\n\n"
