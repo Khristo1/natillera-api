@@ -716,6 +716,116 @@ class ModuloPrestamos:
             
             ttk.Button(main_frame_pago, text="REGISTRAR PAGO", command=guardar_pago, width=20).pack(pady=20)
             ttk.Button(main_frame_pago, text="CANCELAR", command=pago_win.destroy, width=20).pack(pady=5)
+
+            def modificar_prestamo():
+                seleccion = tree.selection()
+                if not seleccion:
+                    messagebox.showwarning("Error", "Seleccione un préstamo para modificar")
+                    return
+                item = tree.item(seleccion[0])
+                valores = item['values']
+                if valores[0] == "No hay préstamos":
+                    return
+                prestamo_id = valores[0]
+                
+                # Obtener datos actuales
+                query = "SELECT monto_prestado, interes_mensual, cuota_mensual, cuotas_totales, cuotas_restantes, estado FROM prestamos WHERE id_prestamo = ?"
+                prestamo = self.db.fetch_one(query, (prestamo_id,))
+                if not prestamo:
+                    return
+                
+                # Ventana de modificación
+                mod_win = tk.Toplevel(ventana)
+                mod_win.title("Modificar Préstamo")
+                mod_win.geometry("400x400")
+                mod_win.transient()
+                mod_win.grab_set()
+                
+                ttk.Label(mod_win, text="MODIFICAR PRÉSTAMO", font=("Arial", 14, "bold")).pack(pady=10)
+                
+                frame = ttk.Frame(mod_win, padding="20")
+                frame.pack(fill=tk.BOTH, expand=True)
+                
+                ttk.Label(frame, text="Monto ($):").grid(row=0, column=0, sticky=tk.W, pady=5)
+                entry_monto = ttk.Entry(frame)
+                entry_monto.grid(row=0, column=1, pady=5)
+                entry_monto.insert(0, str(prestamo[0]))
+                
+                ttk.Label(frame, text="Interés (%):").grid(row=1, column=0, sticky=tk.W, pady=5)
+                entry_interes = ttk.Entry(frame)
+                entry_interes.grid(row=1, column=1, pady=5)
+                entry_interes.insert(0, str(prestamo[1]))
+                
+                ttk.Label(frame, text="Cuota ($):").grid(row=2, column=0, sticky=tk.W, pady=5)
+                entry_cuota = ttk.Entry(frame)
+                entry_cuota.grid(row=2, column=1, pady=5)
+                entry_cuota.insert(0, str(prestamo[2]))
+                
+                ttk.Label(frame, text="Cuotas totales:").grid(row=3, column=0, sticky=tk.W, pady=5)
+                entry_cuotas_totales = ttk.Entry(frame)
+                entry_cuotas_totales.grid(row=3, column=1, pady=5)
+                entry_cuotas_totales.insert(0, str(prestamo[3]))
+                
+                ttk.Label(frame, text="Cuotas restantes:").grid(row=4, column=0, sticky=tk.W, pady=5)
+                entry_cuotas_restantes = ttk.Entry(frame)
+                entry_cuotas_restantes.grid(row=4, column=1, pady=5)
+                entry_cuotas_restantes.insert(0, str(prestamo[4]))
+                
+                ttk.Label(frame, text="Estado:").grid(row=5, column=0, sticky=tk.W, pady=5)
+                combo_estado = ttk.Combobox(frame, values=["activo", "pagado", "vencido"], state="readonly")
+                combo_estado.grid(row=5, column=1, pady=5)
+                combo_estado.set(prestamo[5])
+                
+                def guardar_modificacion():
+                    try:
+                        monto = float(entry_monto.get())
+                        interes = float(entry_interes.get())
+                        cuota = float(entry_cuota.get())
+                        cuotas_totales = int(entry_cuotas_totales.get())
+                        cuotas_restantes = int(entry_cuotas_restantes.get())
+                        estado = combo_estado.get()
+                        
+                        query = """
+                            UPDATE prestamos SET 
+                                monto_prestado = ?, interes_mensual = ?, cuota_mensual = ?,
+                                cuotas_totales = ?, cuotas_restantes = ?, estado = ?
+                            WHERE id_prestamo = ?
+                        """
+                        if self.db.execute(query, (monto, interes, cuota, cuotas_totales, cuotas_restantes, estado, prestamo_id)):
+                            messagebox.showinfo("Éxito", "Préstamo modificado correctamente")
+                            mod_win.destroy()
+                            cargar_prestamos()
+                            mostrar_detalles()
+                        else:
+                            messagebox.showerror("Error", "No se pudo modificar")
+                    except Exception as e:
+                        messagebox.showerror("Error", f"Error: {str(e)}")
+                
+                ttk.Button(frame, text="Guardar Cambios", command=guardar_modificacion).grid(row=6, column=0, columnspan=2, pady=20)
+
+
+            def eliminar_prestamo():
+                seleccion = tree.selection()
+                if not seleccion:
+                    messagebox.showwarning("Error", "Seleccione un préstamo")
+                    return
+                item = tree.item(seleccion[0])
+                valores = item['values']
+                if valores[0] == "No hay préstamos":
+                    return
+                prestamo_id = valores[0]
+                solicitante = valores[1]
+                
+                respuesta = messagebox.askyesno("Confirmar", f"¿Eliminar préstamo #{prestamo_id} de {solicitante}?")
+                if respuesta:
+                    try:
+                        self.db.execute("DELETE FROM pagos_prestamo WHERE id_prestamo = ?", (prestamo_id,))
+                        self.db.execute("DELETE FROM prestamos WHERE id_prestamo = ?", (prestamo_id,))
+                        messagebox.showinfo("Éxito", "Préstamo eliminado")
+                        cargar_prestamos()
+                        mostrar_detalles()
+                    except Exception as e:
+                        messagebox.showerror("Error", f"Error: {str(e)}")
         
         # ========== BOTONES ==========
         btn_frame = ttk.Frame(main_frame)
