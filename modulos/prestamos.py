@@ -403,10 +403,12 @@ class ModuloPrestamos:
             
             query = """
                 SELECT p.id_prestamo, p.codigo_prestamo, 
-                    CASE WHEN p.es_externo = TRUE THEN p.nombre_externo ELSE s.nombre || ' ' || s.apellido END as solicitante,
+                    CASE WHEN p.es_externo = TRUE THEN p.nombre_externo 
+                            ELSE s.nombre || ' ' || s.apellido 
+                    END as solicitante,
                     p.monto_prestado, p.interes_mensual, p.cuota_mensual,
                     p.cuotas_totales, p.cuotas_restantes, p.saldo_pendiente, 
-                    p.estado, p.fecha_prestamo, p.id_socio
+                    p.estado, p.fecha_prestamo
                 FROM prestamos p
                 LEFT JOIN socios s ON p.id_socio = s.id_socio
                 ORDER BY p.fecha_prestamo DESC
@@ -418,18 +420,13 @@ class ModuloPrestamos:
                 return
             
             for p in prestamos:
-                # p[0] = id_prestamo
-                # p[1] = codigo_prestamo
-                # p[2] = solicitante
-                # p[3] = monto_prestado
-                # p[4] = interes_mensual
-                # p[5] = cuota_mensual
-                # p[6] = cuotas_totales
-                # p[7] = cuotas_restantes
-                # p[8] = saldo_pendiente
-                # p[9] = estado
-                # p[10] = fecha_prestamo
-                # p[11] = id_socio (este es el índice 11)
+                monto = float(p[3]) if p[3] else 0
+                interes = float(p[4]) if p[4] else 0
+                cuota = float(p[5]) if p[5] else 0
+                saldo = float(p[8]) if p[8] else 0
+                
+                valores = (p[0], p[1], p[2], f"${monto:,.2f}", f"{interes}%", f"${cuota:,.2f}",
+                        p[6], p[7], f"${saldo:,.2f}", p[9], p[10])
                 
                 if p[9] == "activo":
                     tree.insert("", tk.END, values=valores, tags=("activo",))
