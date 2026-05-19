@@ -650,7 +650,11 @@ class ModuloPrestamos:
                         interes_pagado = interes_periodo
                         abono_capital = monto_pagado - interes_periodo
                         nuevo_capital = capital_pendiente - abono_capital
-                        nueva_cuota = nuevo_capital + (nuevo_capital * (interes_porcentaje / 100)) if nuevo_capital > 0 else 0
+                        if nuevo_capital < 0:
+                            nuevo_capital = 0
+                        # RECÁLCULO CORRECTO: interés sobre el NUEVO capital
+                        nuevo_interes = nuevo_capital * (interes_porcentaje / 100) if nuevo_capital > 0 else 0
+                        nueva_cuota = nuevo_capital + nuevo_interes
                         nuevas_cuotas = cuotas_restantes - 1 if nuevo_capital > 0 else 0
                         
                     elif tipo_pago == "solo_interes":
@@ -658,6 +662,7 @@ class ModuloPrestamos:
                         interes_pagado = interes_periodo
                         abono_capital = 0
                         nuevo_capital = capital_pendiente
+                        # El interés sigue siendo el mismo porque el capital no cambió
                         nueva_cuota = cuota_actual
                         nuevas_cuotas = cuotas_restantes
                         
@@ -672,7 +677,11 @@ class ModuloPrestamos:
                         monto_pagado = interes_periodo + abono_capital
                         interes_pagado = interes_periodo
                         nuevo_capital = capital_pendiente - abono_capital
-                        nueva_cuota = nuevo_capital + (nuevo_capital * (interes_porcentaje / 100)) if nuevo_capital > 0 else 0
+                        if nuevo_capital < 0:
+                            nuevo_capital = 0
+                        # RECÁLCULO CORRECTO: interés sobre el NUEVO capital
+                        nuevo_interes = nuevo_capital * (interes_porcentaje / 100) if nuevo_capital > 0 else 0
+                        nueva_cuota = nuevo_capital + nuevo_interes
                         nuevas_cuotas = cuotas_restantes
                         
                     else:  # total
@@ -706,13 +715,15 @@ class ModuloPrestamos:
                     """, (nuevo_capital, nueva_cuota, nuevas_cuotas, 
                         nuevo_estado, fecha_proxima.strftime("%Y-%m-%d"), prestamo_actual_id))
                     
-                    # Mostrar resumen
+                    # Mostrar resumen con el nuevo interés calculado
                     resumen = f"✅ Pago registrado\n\n"
                     resumen += f"💰 Monto pagado: ${monto_pagado:,.2f}\n"
                     resumen += f"💸 Interés pagado: ${interes_pagado:,.2f}\n"
                     resumen += f"🏦 Abono a capital: ${abono_capital:,.2f}\n"
                     resumen += f"📊 Nuevo capital: ${nuevo_capital:,.2f}\n"
-                    if nueva_cuota > 0:
+                    if nuevo_capital > 0:
+                        nuevo_interes_mostrar = nuevo_capital * (interes_porcentaje / 100)
+                        resumen += f"🔄 Nuevo interés próximo período: ${nuevo_interes_mostrar:,.2f}\n"
                         resumen += f"🔄 Nueva cuota: ${nueva_cuota:,.2f}\n"
                     
                     messagebox.showinfo("Éxito", resumen)
@@ -722,7 +733,7 @@ class ModuloPrestamos:
                     
                 except Exception as e:
                     messagebox.showerror("Error", f"Error: {str(e)}")
-            
+
             # Botones
             btn_frame = ttk.Frame(main_frame_pago)
             btn_frame.pack(fill=tk.X, pady=20)
