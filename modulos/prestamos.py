@@ -351,10 +351,10 @@ class ModuloPrestamos:
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         # Treeview
-        columns = ("ID", "Solicitante", "Monto", "Interés", "Cuota", "Plazo", "Restantes", "Saldo", "Estado", "Fecha")
+        columns = ("ID", "Código", "Solicitante", "Monto", "Interés", "Cuota", "Plazo", "Restantes", "Saldo", "Estado", "Fecha")
         tree = ttk.Treeview(main_frame, columns=columns, show="headings", height=15)
         
-        col_widths = {"ID": 60, "Solicitante": 200, "Monto": 120, "Interés": 80, "Cuota": 120, 
+        col_widths = {"ID": 60, "Código": 100, "Solicitante": 200, "Monto": 120, "Interés": 80, "Cuota": 120, 
                       "Plazo": 70, "Restantes": 80, "Saldo": 130, "Estado": 90, "Fecha": 110}
         
         for col in columns:
@@ -401,14 +401,32 @@ class ModuloPrestamos:
             for item in tree.get_children():
                 tree.delete(item)
             
+            # La consulta debe devolver las columnas en este ORDEN:
+            # 0: id_prestamo
+            # 1: codigo_prestamo
+            # 2: solicitante
+            # 3: monto_prestado
+            # 4: interes_mensual
+            # 5: cuota_mensual
+            # 6: cuotas_totales
+            # 7: cuotas_restantes
+            # 8: saldo_pendiente
+            # 9: estado
+            # 10: fecha_prestamo
             query = """
-                SELECT p.id_prestamo, p.codigo_prestamo, 
+                SELECT p.id_prestamo, 
+                    p.codigo_prestamo,
                     CASE WHEN p.es_externo = TRUE THEN p.nombre_externo 
-                            ELSE s.nombre || ' ' || s.apellido 
+                            ELSE COALESCE(s.nombre || ' ' || s.apellido, 'Particular')
                     END as solicitante,
-                    p.monto_prestado, p.interes_mensual, p.cuota_mensual,
-                    p.cuotas_totales, p.cuotas_restantes, p.saldo_pendiente, 
-                    p.estado, p.fecha_prestamo
+                    p.monto_prestado, 
+                    p.interes_mensual, 
+                    p.cuota_mensual,
+                    p.cuotas_totales, 
+                    p.cuotas_restantes, 
+                    p.saldo_pendiente, 
+                    p.estado, 
+                    p.fecha_prestamo
                 FROM prestamos p
                 LEFT JOIN socios s ON p.id_socio = s.id_socio
                 ORDER BY p.fecha_prestamo DESC
@@ -420,17 +438,37 @@ class ModuloPrestamos:
                 return
             
             for p in prestamos:
+                # Extraer valores con formato
+                id_prestamo = p[0]
+                codigo = p[1] if p[1] else "S/C"
+                solicitante = p[2] if p[2] else "Particular"
                 monto = float(p[3]) if p[3] else 0
                 interes = float(p[4]) if p[4] else 0
                 cuota = float(p[5]) if p[5] else 0
+                cuotas_totales = int(p[6]) if p[6] else 0
+                cuotas_restantes = int(p[7]) if p[7] else 0
                 saldo = float(p[8]) if p[8] else 0
+                estado = p[9] if p[9] else "activo"
+                fecha = p[10] if p[10] else ""
                 
-                valores = (p[0], p[1], p[2], f"${monto:,.2f}", f"{interes}%", f"${cuota:,.2f}",
-                        p[6], p[7], f"${saldo:,.2f}", p[9], p[10])
+                # Crear tupla de valores con formato de moneda
+                valores = (
+                    id_prestamo,
+                    codigo,
+                    solicitante,
+                    f"${monto:,.2f}",
+                    f"{interes}%",
+                    f"${cuota:,.2f}",
+                    cuotas_totales,
+                    cuotas_restantes,
+                    f"${saldo:,.2f}",
+                    estado,
+                    fecha
+                )
                 
-                if p[9] == "activo":
+                if estado == "activo":
                     tree.insert("", tk.END, values=valores, tags=("activo",))
-                elif p[9] == "pagado":
+                elif estado == "pagado":
                     tree.insert("", tk.END, values=valores, tags=("pagado",))
                 else:
                     tree.insert("", tk.END, values=valores, tags=("vencido",))
