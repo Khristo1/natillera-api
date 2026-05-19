@@ -401,32 +401,16 @@ class ModuloPrestamos:
             for item in tree.get_children():
                 tree.delete(item)
             
-            # La consulta debe devolver las columnas en este ORDEN:
-            # 0: id_prestamo
-            # 1: codigo_prestamo
-            # 2: solicitante
-            # 3: monto_prestado
-            # 4: interes_mensual
-            # 5: cuota_mensual
-            # 6: cuotas_totales
-            # 7: cuotas_restantes
-            # 8: saldo_pendiente
-            # 9: estado
-            # 10: fecha_prestamo
+            from datetime import date
+            
             query = """
-                SELECT p.id_prestamo, 
-                    p.codigo_prestamo,
+                SELECT p.id_prestamo, p.codigo_prestamo,
                     CASE WHEN p.es_externo = TRUE THEN p.nombre_externo 
                             ELSE COALESCE(s.nombre || ' ' || s.apellido, 'Particular')
                     END as solicitante,
-                    p.monto_prestado, 
-                    p.interes_mensual, 
-                    p.cuota_mensual,
-                    p.cuotas_totales, 
-                    p.cuotas_restantes, 
-                    p.saldo_pendiente, 
-                    p.estado, 
-                    p.fecha_prestamo
+                    p.monto_prestado, p.interes_mensual, p.cuota_mensual,
+                    p.cuotas_totales, p.cuotas_restantes, p.saldo_pendiente,
+                    p.estado, p.fecha_prestamo, p.fecha_proximo_pago
                 FROM prestamos p
                 LEFT JOIN socios s ON p.id_socio = s.id_socio
                 ORDER BY p.fecha_prestamo DESC
@@ -437,45 +421,49 @@ class ModuloPrestamos:
                 tree.insert("", tk.END, values=("No hay préstamos", "", "", "", "", "", "", "", "", "", ""))
                 return
             
+            hoy = date.today()
+            
             for p in prestamos:
-                # Extraer valores con formato
-                id_prestamo = p[0]
-                codigo = p[1] if p[1] else "S/C"
-                solicitante = p[2] if p[2] else "Particular"
                 monto = float(p[3]) if p[3] else 0
                 interes = float(p[4]) if p[4] else 0
                 cuota = float(p[5]) if p[5] else 0
-                cuotas_totales = int(p[6]) if p[6] else 0
-                cuotas_restantes = int(p[7]) if p[7] else 0
                 saldo = float(p[8]) if p[8] else 0
+                fecha_prox_pago = p[11] if p[11] else ""
                 estado = p[9] if p[9] else "activo"
-                fecha = p[10] if p[10] else ""
                 
-                # Crear tupla de valores con formato de moneda
                 valores = (
-                    id_prestamo,
-                    codigo,
-                    solicitante,
-                    f"${monto:,.2f}",
-                    f"{interes}%",
-                    f"${cuota:,.2f}",
-                    cuotas_totales,
-                    cuotas_restantes,
-                    f"${saldo:,.2f}",
-                    estado,
-                    fecha
+                    p[0], p[1] if p[1] else "S/C", p[2],
+                    f"${monto:,.2f}", f"{interes}%", f"${cuota:,.2f}",
+                    p[6], p[7], f"${saldo:,.2f}", estado, p[10]
                 )
                 
-                if estado == "activo":
-                    tree.insert("", tk.END, values=valores, tags=("activo",))
+                # Determinar color según estado y vencimiento
+                tag = "activo"
+                if estado == "activo" and fecha_prox_pago:
+                    try:
+                        fecha_venc = datetime.strptime(fecha_prox_pago, "%Y-%m-%d").date()
+                        dias_restantes = (fecha_venc - hoy).days
+                        
+                        if dias_restantes < 0:
+                            tag = "vencido"
+                        elif dias_restantes <= 3:
+                            tag = "proximo"
+                        else:
+                            tag = "activo"
+                    except:
+                        tag = "activo"
                 elif estado == "pagado":
-                    tree.insert("", tk.END, values=valores, tags=("pagado",))
-                else:
-                    tree.insert("", tk.END, values=valores, tags=("vencido",))
+                    tag = "pagado"
+                elif estado == "vencido":
+                    tag = "vencido"
+                
+                tree.insert("", tk.END, values=valores, tags=(tag,))
             
+            # Configurar colores
             tree.tag_configure('activo', foreground='green')
             tree.tag_configure('pagado', foreground='blue')
-            tree.tag_configure('vencido', foreground='red')
+            tree.tag_configure('proximo', foreground='orange', background='#FFF8E7')  # Amarillo claro
+            tree.tag_configure('vencido', foreground='red', background='#FFEBEE')     # Rojo claro
 
         def mostrar_detalles(event=None):
             nonlocal prestamo_actual_id
@@ -906,6 +894,24 @@ class ModuloPrestamos:
         
         tree.bind("<<TreeviewSelect>>", mostrar_detalles)
         cargar_prestamos()
+
+        def enviar_recordatorio():
+            if not prestamo_actual_id:
+                messagebox.showwarning("Error", "Seleccione un préstamo")
+                return
+            
+            # Preguntar qué tipo de recordatorio enviar
+            tipo = messagebox.askquestion("Recordatorio", 
+                                        "¿Enviar recordatorio de PRÓXIMO VENCIMIENTO?\n"
+                                        "Seleccione 'No' para enviar recordatorio de VENCIDO.")
+            
+            if tipo == 'yes':
+                self.enviar_recordatorio_whatsapp(prestamo_actual_id, "proximo")
+            else:
+                self.enviar_recordatorio_whatsapp(prestamo_actual_id, "vencido")
+
+        # Agregar botón en btn_frame
+        ttk.Button(btn_frame, text="📱 Enviar WhatsApp", command=enviar_recordatorio, width=15).pack(side=tk.LEFT, padx=5)
     
     def prestamos_vencidos(self):
         """Mostrar préstamos vencidos"""
@@ -966,6 +972,72 @@ class ModuloPrestamos:
         
         ttk.Button(main_frame, text="Actualizar", command=lambda: [tree.delete(*tree.get_children()), self.prestamos_vencidos()]).pack(pady=10)
     
+    def enviar_recordatorio_whatsapp(self, prestamo_id, tipo="vencido"):
+        """Enviar recordatorio por WhatsApp"""
+        # Obtener datos del préstamo y del socio
+        query = """
+            SELECT p.id_prestamo, p.codigo_prestamo, p.saldo_pendiente, 
+                p.cuota_mensual, p.fecha_proximo_pago,
+                s.celular, s.nombre || ' ' || s.apellido as socio_nombre,
+                p.nombre_externo, p.celular_externo
+            FROM prestamos p
+            LEFT JOIN socios s ON p.id_socio = s.id_socio
+            WHERE p.id_prestamo = ?
+        """
+        prestamo = self.db.fetch_one(query, (prestamo_id,))
+        if not prestamo:
+            return False
+        
+        # Obtener teléfono (prioridad: socio o particular)
+        telefono = prestamo[5] if prestamo[5] else prestamo[8]
+        nombre = prestamo[6] if prestamo[6] else prestamo[7]
+        
+        if not telefono:
+            messagebox.showwarning("Error", "El cliente no tiene número de teléfono registrado")
+            return False
+        
+        # Formatear número (eliminar espacios, guiones, etc.)
+        telefono = ''.join(filter(str.isdigit, telefono))
+        if telefono.startswith('0'):
+            telefono = telefono[1:]
+        if not telefono.startswith('57'):
+            telefono = '57' + telefono
+        
+        # Crear mensaje según el tipo
+        fecha_venc = prestamo[4] if prestamo[4] else ""
+        saldo = float(prestamo[2]) if prestamo[2] else 0
+        cuota = float(prestamo[3]) if prestamo[3] else 0
+        codigo = prestamo[1] if prestamo[1] else "S/C"
+        
+        if tipo == "proximo":
+            mensaje = f"🔔 Natillera Familiar - RECORDATORIO\n\n"
+            mensaje += f"Estimado/a {nombre},\n\n"
+            mensaje += f"Le recordamos que su préstamo #{codigo} tiene una cuota por pagar de ${cuota:,.2f}.\n"
+            mensaje += f"📅 Fecha de vencimiento: {fecha_venc}\n"
+            mensaje += f"💰 Saldo pendiente: ${saldo:,.2f}\n\n"
+            mensaje += "Por favor, realice su pago a tiempo para evitar intereses adicionales.\n\n"
+            mensaje += "¡Gracias por su confianza!"
+        else:
+            mensaje = f"⚠️ Natillera Familiar - PRÉSTAMO VENCIDO ⚠️\n\n"
+            mensaje += f"Estimado/a {nombre},\n\n"
+            mensaje += f"Su préstamo #{codigo} se encuentra VENCIDO.\n"
+            mensaje += f"📅 Vencía el: {fecha_venc}\n"
+            mensaje += f"💰 Saldo pendiente: ${saldo:,.2f}\n\n"
+            mensaje += "Por favor, regularice su situación lo antes posible.\n"
+            mensaje += "Comuníquese con nosotros para acordar una forma de pago.\n\n"
+            mensaje += "¡Gracias por su atención!"
+        
+        # Codificar mensaje para URL
+        import urllib.parse
+        mensaje_codificado = urllib.parse.quote(mensaje)
+        
+        # Abrir WhatsApp Web
+        url = f"https://web.whatsapp.com/send?phone={telefono}&text={mensaje_codificado}"
+        import webbrowser
+        webbrowser.open(url)
+        
+        return True
+
     def registrar_pago(self):
         """Registrar pago de préstamo (acceso directo)"""
         self.gestionar_prestamos()
