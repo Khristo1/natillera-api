@@ -495,311 +495,102 @@ class ModuloPrestamos:
                 lbl_cuota.config(text=f"Próxima cuota: ${cuota:,.2f}")
                 lbl_fecha.config(text=f"Fecha próximo pago: {fecha}")
         
-        def registrar_pago():
+        def registrar_pago(self):
             nonlocal prestamo_actual_id
             if not prestamo_actual_id:
                 messagebox.showwarning("Error", "Seleccione un préstamo")
                 return
             
-            # ========== FUNCIONES DE FORMATEO ==========
-            def formatear_miles(entry):
-                def _formatear(event=None):
-                    try:
-                        texto = entry.get()
-                        if texto:
-                            # Eliminar formato anterior
-                            limpio = texto.replace('$', '').replace(',', '').strip()
-                            if limpio and limpio.replace('.', '', 1).isdigit():
-                                num = float(limpio)
-                                entry.delete(0, tk.END)
-                                entry.insert(0, f"{num:,.0f}")
-                    except:
-                        pass
-                return _formatear
-
-            def quitar_formato(entry):
-                def _quitar(event=None):
-                    try:
-                        texto = entry.get()
-                        if texto:
-                            limpio = texto.replace('$', '').replace(',', '').strip()
-                            entry.delete(0, tk.END)
-                            entry.insert(0, limpio)
-                    except:
-                        pass
-                return _quitar
-            
-            # Obtener datos actuales del préstamo
-            q = """SELECT saldo_pendiente, cuota_mensual, interes_mensual, 
-                        cuotas_restantes, fecha_proximo_pago, codigo_prestamo
+            # Obtener datos del préstamo
+            q = """SELECT saldo_pendiente, interes_mensual, cuota_mensual, 
+                        cuotas_restantes
                 FROM prestamos WHERE id_prestamo = ?"""
             prestamo = self.db.fetch_one(q, (prestamo_actual_id,))
             if not prestamo:
                 messagebox.showerror("Error", "Préstamo no encontrado")
                 return
             
-            capital_pendiente = float(prestamo[0]) if prestamo[0] else 0
-            cuota_actual = float(prestamo[1]) if prestamo[1] else 0
-            interes_porcentaje = float(prestamo[2]) if prestamo[2] else 0
-            cuotas_restantes = int(prestamo[3]) if prestamo[3] else 0
-            fecha_prox_pago = prestamo[4] if prestamo[4] else ""
-            codigo = prestamo[5] if prestamo[5] else "S/C"
+            capital = float(prestamo[0])
+            interes = float(prestamo[1])
+            cuota = float(prestamo[2])
+            cuotas_rest = int(prestamo[3])
             
-            if capital_pendiente <= 0:
+            if capital <= 0:
                 messagebox.showinfo("Información", "Este préstamo ya está pagado")
                 return
             
-            # Calcular interés del período sobre el CAPITAL pendiente
-            interes_periodo = capital_pendiente * (interes_porcentaje / 100)
+            # Interés del período = capital * (interés / 100)
+            interes_periodo = capital * (interes / 100)
             
             # Ventana de pago
             pago_win = tk.Toplevel(ventana)
-            pago_win.title(f"Registrar Pago - {codigo}")
-            pago_win.geometry("500x600")
-            pago_win.minsize(450, 500)
+            pago_win.title("Registrar Pago")
+            pago_win.geometry("400x350")
             pago_win.transient()
             pago_win.grab_set()
             
-            # Contenedor con scroll
-            main_container = ttk.Frame(pago_win)
-            main_container.pack(fill=tk.BOTH, expand=True)
+            frame = ttk.Frame(pago_win, padding=20)
+            frame.pack(fill=tk.BOTH, expand=True)
             
-            canvas = tk.Canvas(main_container, highlightthickness=0)
-            scrollbar = ttk.Scrollbar(main_container, orient=tk.VERTICAL, command=canvas.yview)
-            scrollable_frame = ttk.Frame(canvas)
+            tk.Label(frame, text="REGISTRAR PAGO", font=("Arial", 14, "bold")).pack(pady=(0, 20))
             
-            scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-            canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-            canvas.configure(yscrollcommand=scrollbar.set)
+            tk.Label(frame, text=f"Capital pendiente: ${capital:,.2f}", font=("Arial", 12, "bold"), fg="red").pack(anchor=tk.W)
+            tk.Label(frame, text=f"Interés del período ({interes}%): ${interes_periodo:,.2f}", fg="blue").pack(anchor=tk.W)
+            tk.Label(frame, text=f"Cuota actual: ${cuota:,.2f}").pack(anchor=tk.W)
             
-            canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            tk.Label(frame, text="\nMonto a pagar ($):").pack(anchor=tk.W)
+            entry_monto = ttk.Entry(frame, font=("Arial", 11))
+            entry_monto.pack(fill=tk.X, pady=5)
+            entry_monto.insert(0, f"{cuota:,.0f}".replace(',', ''))
             
-            main_frame_pago = ttk.Frame(scrollable_frame, padding="20")
-            main_frame_pago.pack(fill=tk.BOTH, expand=True)
-            
-            tk.Label(main_frame_pago, text="REGISTRAR PAGO", font=("Arial", 16, "bold")).pack(pady=(0, 20))
-            
-            # ========== INFORMACIÓN DEL PRÉSTAMO ==========
-            info_frame = ttk.LabelFrame(main_frame_pago, text="Información del Préstamo", padding="10")
-            info_frame.pack(fill=tk.X, pady=5)
-            
-            tk.Label(info_frame, text=f"Código: {codigo}", font=("Arial", 10, "bold")).pack(anchor=tk.W)
-            tk.Label(info_frame, text=f"Capital pendiente: ${capital_pendiente:,.2f}", 
-                    font=("Arial", 12, "bold"), fg="red").pack(anchor=tk.W)
-            tk.Label(info_frame, text=f"Interés del período ({interes_porcentaje}%): ${interes_periodo:,.2f}", 
-                    font=("Arial", 10), fg="blue").pack(anchor=tk.W)
-            tk.Label(info_frame, text=f"Cuota actual: ${cuota_actual:,.2f}").pack(anchor=tk.W)
-            tk.Label(info_frame, text=f"Cuotas restantes: {cuotas_restantes}").pack(anchor=tk.W)
-            tk.Label(info_frame, text=f"Próximo vencimiento: {fecha_prox_pago}").pack(anchor=tk.W)
-            
-            # ========== TIPO DE PAGO ==========
-            tipo_frame = ttk.LabelFrame(main_frame_pago, text="Tipo de Pago", padding="10")
-            tipo_frame.pack(fill=tk.X, pady=5)
-            
-            tipo_pago_var = tk.StringVar(value="normal")
-            ttk.Radiobutton(tipo_frame, text="Pago normal (interés + abono a capital)", 
-                        variable=tipo_pago_var, value="normal").pack(anchor=tk.W, pady=2)
-            ttk.Radiobutton(tipo_frame, text="Pago de solo intereses", 
-                        variable=tipo_pago_var, value="solo_interes").pack(anchor=tk.W, pady=2)
-            ttk.Radiobutton(tipo_frame, text="Abono a capital (con intereses del período)", 
-                        variable=tipo_pago_var, value="abono").pack(anchor=tk.W, pady=2)
-            ttk.Radiobutton(tipo_frame, text="Pago total (liquidar todo)", 
-                        variable=tipo_pago_var, value="total").pack(anchor=tk.W, pady=2)
-            
-            # ========== CAMPOS DE PAGO ==========
-            pago_frame = ttk.LabelFrame(main_frame_pago, text="Datos del Pago", padding="10")
-            pago_frame.pack(fill=tk.X, pady=5)
-            
-            # Monto total
-            ttk.Label(pago_frame, text="Monto total a pagar ($):").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
-            entry_monto = ttk.Entry(pago_frame, width=20, font=("Arial", 11))
-            entry_monto.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
-            entry_monto.bind('<FocusOut>', formatear_miles(entry_monto))
-            entry_monto.bind('<FocusIn>', quitar_formato(entry_monto))
-            
-            # Abono a capital (solo para tipo abono)
-            ttk.Label(pago_frame, text="Abono a capital ($):").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
-            entry_abono = ttk.Entry(pago_frame, width=20)
-            entry_abono.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
-            entry_abono.insert(0, "0")
-            entry_abono.config(state="disabled")
-            entry_abono.bind('<FocusOut>', formatear_miles(entry_abono))
-            entry_abono.bind('<FocusIn>', quitar_formato(entry_abono))
-            
-            # Fecha de pago
-            ttk.Label(pago_frame, text="Fecha de pago:").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
-            entry_fecha = ttk.Entry(pago_frame, width=20)
-            entry_fecha.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
-            entry_fecha.insert(0, datetime.now().strftime("%Y-%m-%d"))
-            
-            # Forma de pago
-            ttk.Label(pago_frame, text="Forma de pago:").grid(row=3, column=0, padx=5, pady=5, sticky=tk.W)
-            combo_forma = ttk.Combobox(pago_frame, values=["Efectivo", "Transferencia", "Débito", "Cheque"], 
-                                    state="readonly", width=18)
-            combo_forma.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
-            combo_forma.set("Efectivo")
-            
-            # Observaciones
-            ttk.Label(pago_frame, text="Observaciones:").grid(row=4, column=0, padx=5, pady=5, sticky=tk.W)
-            text_obs = tk.Text(pago_frame, height=3, width=25)
-            text_obs.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W)
-            
-            # Desglose
-            lbl_desglose = tk.Label(pago_frame, text="", font=("Arial", 9), justify=tk.LEFT, fg="green")
-            lbl_desglose.grid(row=5, column=0, columnspan=2, pady=10)
-            
-            def actualizar_campos(*args):
-                tipo = tipo_pago_var.get()
-                entry_monto.config(state="normal")
-                entry_abono.config(state="disabled")
-                entry_monto.delete(0, tk.END)
-                
-                if tipo == "normal":
-                    entry_monto.insert(0, f"{cuota_actual:,.0f}".replace(',', ''))
-                    lbl_desglose.config(text=f"💡 Pago normal:\n   Interés: ${interes_periodo:,.2f}\n   Abono a capital: ${cuota_actual - interes_periodo:,.2f}")
-                elif tipo == "solo_interes":
-                    entry_monto.insert(0, f"{interes_periodo:,.0f}".replace(',', ''))
-                    lbl_desglose.config(text=f"💡 Pago de solo intereses:\n   No se reduce el capital\n   Próximo interés: ${interes_periodo:,.2f}")
-                elif tipo == "abono":
-                    entry_abono.config(state="normal")
-                    entry_monto.delete(0, tk.END)
-                    lbl_desglose.config(text=f"💡 Abono a capital:\n   Debe pagar también los intereses del período (${interes_periodo:,.2f})")
-                else:  # total
-                    entry_monto.insert(0, f"{capital_pendiente + interes_periodo:,.0f}".replace(',', ''))
-                    lbl_desglose.config(text=f"💡 Pago total:\n   Se liquidará el préstamo completamente")
-            
-            def calcular_abono(*args):
-                if tipo_pago_var.get() == "abono":
-                    try:
-                        abono = float(entry_abono.get().replace(',', '')) if entry_abono.get() else 0
-                        if abono > 0:
-                            total = interes_periodo + abono
-                            entry_monto.delete(0, tk.END)
-                            entry_monto.insert(0, f"{total:,.0f}".replace(',', ''))
-                            nuevo_capital = capital_pendiente - abono
-                            if nuevo_capital < 0:
-                                nuevo_capital = 0
-                            nuevo_interes = nuevo_capital * (interes_porcentaje / 100)
-                            nueva_cuota = nuevo_capital + nuevo_interes
-                            lbl_desglose.config(text=f"💡 Abono a capital:\n"
-                                                    f"   Interés: ${interes_periodo:,.2f}\n"
-                                                    f"   Abono: ${abono:,.2f}\n"
-                                                    f"   Nuevo capital: ${nuevo_capital:,.2f}\n"
-                                                    f"   Nuevo interés: ${nuevo_interes:,.2f}\n"
-                                                    f"   Nueva cuota: ${nueva_cuota:,.2f}")
-                    except:
-                        pass
-            
-            tipo_pago_var.trace_add('write', lambda *args: actualizar_campos())
-            entry_abono.bind("<KeyRelease>", lambda e: calcular_abono())
-            
-            actualizar_campos()
-            
-            def guardar_pago():
+            def guardar():
                 try:
-                    tipo_pago = tipo_pago_var.get()
-                    fecha_pago = entry_fecha.get()
-                    forma_pago = combo_forma.get()
-                    observaciones = text_obs.get("1.0", tk.END).strip()
+                    monto_pagado = float(entry_monto.get().replace(',', ''))
                     
-                    # CAPITAL PENDIENTE ACTUAL (sin intereses)
-                    capital_actual = capital_pendiente
+                    if monto_pagado < interes_periodo:
+                        messagebox.showwarning("Error", f"Debe pagar al menos el interés: ${interes_periodo:,.2f}")
+                        return
                     
-                    # Interés del período = capital_actual * (interés_porcentaje / 100)
-                    interes_correcto = capital_actual * (interes_porcentaje / 100)
-                    
-                    if tipo_pago == "normal":
-                        monto_pagado = cuota_actual
-                        interes_pagado = interes_correcto
-                        abono_capital = monto_pagado - interes_pagado
-                        nuevo_capital = capital_actual - abono_capital
-                        if nuevo_capital < 0:
-                            nuevo_capital = 0
-                        # Nueva cuota = nuevo_capital + (nuevo_capital * interés_porcentaje / 100)
-                        nueva_cuota = nuevo_capital + (nuevo_capital * (interes_porcentaje / 100)) if nuevo_capital > 0 else 0
-                        nuevas_cuotas = cuotas_restantes - 1 if nuevo_capital > 0 else 0
-                        
-                    elif tipo_pago == "solo_interes":
-                        monto_pagado = interes_correcto
-                        interes_pagado = interes_correcto
-                        abono_capital = 0
-                        nuevo_capital = capital_actual
-                        nueva_cuota = cuota_actual
-                        nuevas_cuotas = cuotas_restantes
-                        
-                    elif tipo_pago == "abono":
-                        abono_capital = float(entry_abono.get().replace(',', '')) if entry_abono.get() else 0
-                        if abono_capital <= 0:
-                            messagebox.showwarning("Error", "Ingrese un monto para abonar a capital")
-                            return
-                        if abono_capital > capital_actual:
-                            messagebox.showwarning("Error", f"El abono no puede superar el capital pendiente (${capital_actual:,.2f})")
-                            return
-                        monto_pagado = interes_correcto + abono_capital
-                        interes_pagado = interes_correcto
-                        nuevo_capital = capital_actual - abono_capital
-                        if nuevo_capital < 0:
-                            nuevo_capital = 0
-                        nueva_cuota = nuevo_capital + (nuevo_capital * (interes_porcentaje / 100)) if nuevo_capital > 0 else 0
-                        nuevas_cuotas = cuotas_restantes
-                        
-                    else:  # total
-                        monto_pagado = capital_actual + interes_correcto
-                        interes_pagado = interes_correcto
-                        abono_capital = capital_actual
+                    interes_pagado = interes_periodo
+                    abono_capital = monto_pagado - interes_pagado
+                    nuevo_capital = capital - abono_capital
+                    if nuevo_capital < 0:
                         nuevo_capital = 0
-                        nueva_cuota = 0
-                        nuevas_cuotas = 0
                     
+                    # Nueva cuota = nuevo_capital + (nuevo_capital * interés / 100)
+                    nueva_cuota = nuevo_capital + (nuevo_capital * (interes / 100))
+                    nuevas_cuotas = cuotas_rest - 1 if nuevo_capital > 0 else 0
                     nuevo_estado = "pagado" if nuevo_capital <= 0 else "activo"
                     
-                    fecha_actual = datetime.strptime(fecha_pago, "%Y-%m-%d")
-                    fecha_proxima = fecha_actual + timedelta(days=30)
-                    
-                    # Insertar pago
-                    self.db.execute("""
-                        INSERT INTO pagos_prestamo 
-                        (id_prestamo, monto_pagado, fecha_pago, forma_pago, 
-                        interes_pagado, abono_capital, saldo_restante, observaciones)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (prestamo_actual_id, monto_pagado, fecha_pago, forma_pago,
-                        interes_pagado, abono_capital, nuevo_capital, observaciones))
-                    
-                    # Actualizar préstamo
-                    self.db.execute("""
-                        UPDATE prestamos 
+                    # Guardar
+                    self.db.execute("""UPDATE prestamos 
                         SET saldo_pendiente = ?, cuota_mensual = ?, 
-                            cuotas_restantes = ?, estado = ?, fecha_proximo_pago = ?
-                        WHERE id_prestamo = ?
-                    """, (nuevo_capital, nueva_cuota, nuevas_cuotas, 
-                        nuevo_estado, fecha_proxima.strftime("%Y-%m-%d"), prestamo_actual_id))
+                            cuotas_restantes = ?, estado = ?
+                        WHERE id_prestamo = ?""",
+                        (nuevo_capital, nueva_cuota, nuevas_cuotas, nuevo_estado, prestamo_actual_id))
                     
-                    # Mostrar resumen
-                    resumen = f"✅ Pago registrado\n\n"
-                    resumen += f"💰 Monto pagado: ${monto_pagado:,.2f}\n"
-                    resumen += f"💸 Interés pagado: ${interes_pagado:,.2f}\n"
-                    resumen += f"🏦 Abono a capital: ${abono_capital:,.2f}\n"
-                    resumen += f"📊 Nuevo capital: ${nuevo_capital:,.2f}\n"
-                    if nueva_cuota > 0:
-                        nuevo_interes_mostrar = nuevo_capital * (interes_porcentaje / 100)
-                        resumen += f"🔄 Próximo interés: ${nuevo_interes_mostrar:,.2f}\n"
-                        resumen += f"🔄 Nueva cuota: ${nueva_cuota:,.2f}\n"
+                    self.db.execute("""INSERT INTO pagos_prestamo 
+                        (id_prestamo, monto_pagado, interes_pagado, abono_capital, saldo_restante)
+                        VALUES (?, ?, ?, ?, ?)""",
+                        (prestamo_actual_id, monto_pagado, interes_pagado, abono_capital, nuevo_capital))
                     
-                    messagebox.showinfo("Éxito", resumen)
+                    messagebox.showinfo("Éxito", 
+                        f"✅ Pago registrado\n\n"
+                        f"💰 Monto: ${monto_pagado:,.2f}\n"
+                        f"💸 Interés: ${interes_pagado:,.2f}\n"
+                        f"🏦 Abono a capital: ${abono_capital:,.2f}\n"
+                        f"📊 Nuevo capital: ${nuevo_capital:,.2f}\n"
+                        f"🔄 Nueva cuota: ${nueva_cuota:,.2f}")
+                    
                     pago_win.destroy()
                     cargar_prestamos()
                     mostrar_detalles()
                     
                 except Exception as e:
-                    messagebox.showerror("Error", f"Error: {str(e)}")
-
-            # Botones
-            btn_frame = ttk.Frame(main_frame_pago)
-            btn_frame.pack(fill=tk.X, pady=20)
+                    messagebox.showerror("Error", str(e))
             
-            ttk.Button(btn_frame, text="✅ REGISTRAR PAGO", command=guardar_pago, width=18).pack(side=tk.LEFT, padx=10)
-            ttk.Button(btn_frame, text="❌ CANCELAR", command=pago_win.destroy, width=18).pack(side=tk.LEFT, padx=10)
+            ttk.Button(frame, text="REGISTRAR PAGO", command=guardar, width=20).pack(pady=20)
+            ttk.Button(frame, text="CANCELAR", command=pago_win.destroy, width=20).pack()
 
         def modificar_prestamo():
             nonlocal prestamo_actual_id
