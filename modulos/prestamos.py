@@ -936,8 +936,8 @@ class ModuloPrestamos:
         
         query = """
             SELECT p.id_prestamo, 
-                   CASE WHEN p.es_externo = 1 THEN p.nombre_externo ELSE s.nombre || ' ' || s.apellido END,
-                   CASE WHEN p.es_externo = 1 THEN p.celular_externo ELSE s.celular END,
+                   CASE WHEN p.es_externo = TRUE THEN p.nombre_externo ELSE s.nombre || ' ' || s.apellido END,
+                   CASE WHEN p.es_externo = TRUE THEN p.celular_externo ELSE s.celular END,
                    p.monto_prestado, p.saldo_pendiente, p.cuota_mensual,
                    p.fecha_proximo_pago
             FROM prestamos p
