@@ -703,24 +703,28 @@ class ModuloPrestamos:
                     forma_pago = combo_forma.get()
                     observaciones = text_obs.get("1.0", tk.END).strip()
                     
+                    # CAPITAL PENDIENTE ACTUAL (sin intereses)
+                    capital_actual = capital_pendiente
+                    
+                    # Interés del período = capital_actual * (interés_porcentaje / 100)
+                    interes_correcto = capital_actual * (interes_porcentaje / 100)
+                    
                     if tipo_pago == "normal":
                         monto_pagado = cuota_actual
-                        interes_pagado = interes_periodo
-                        abono_capital = monto_pagado - interes_periodo
-                        nuevo_capital = capital_pendiente - abono_capital
+                        interes_pagado = interes_correcto
+                        abono_capital = monto_pagado - interes_pagado
+                        nuevo_capital = capital_actual - abono_capital
                         if nuevo_capital < 0:
                             nuevo_capital = 0
-                        # RECÁLCULO CORRECTO: interés sobre el NUEVO capital
-                        nuevo_interes = nuevo_capital * (interes_porcentaje / 100) if nuevo_capital > 0 else 0
-                        nueva_cuota = nuevo_capital + nuevo_interes
+                        # Nueva cuota = nuevo_capital + (nuevo_capital * interés_porcentaje / 100)
+                        nueva_cuota = nuevo_capital + (nuevo_capital * (interes_porcentaje / 100)) if nuevo_capital > 0 else 0
                         nuevas_cuotas = cuotas_restantes - 1 if nuevo_capital > 0 else 0
                         
                     elif tipo_pago == "solo_interes":
-                        monto_pagado = interes_periodo
-                        interes_pagado = interes_periodo
+                        monto_pagado = interes_correcto
+                        interes_pagado = interes_correcto
                         abono_capital = 0
-                        nuevo_capital = capital_pendiente
-                        # El interés sigue siendo el mismo porque el capital no cambió
+                        nuevo_capital = capital_actual
                         nueva_cuota = cuota_actual
                         nuevas_cuotas = cuotas_restantes
                         
@@ -729,23 +733,21 @@ class ModuloPrestamos:
                         if abono_capital <= 0:
                             messagebox.showwarning("Error", "Ingrese un monto para abonar a capital")
                             return
-                        if abono_capital > capital_pendiente:
-                            messagebox.showwarning("Error", f"El abono no puede superar el capital pendiente (${capital_pendiente:,.2f})")
+                        if abono_capital > capital_actual:
+                            messagebox.showwarning("Error", f"El abono no puede superar el capital pendiente (${capital_actual:,.2f})")
                             return
-                        monto_pagado = interes_periodo + abono_capital
-                        interes_pagado = interes_periodo
-                        nuevo_capital = capital_pendiente - abono_capital
+                        monto_pagado = interes_correcto + abono_capital
+                        interes_pagado = interes_correcto
+                        nuevo_capital = capital_actual - abono_capital
                         if nuevo_capital < 0:
                             nuevo_capital = 0
-                        # RECÁLCULO CORRECTO: interés sobre el NUEVO capital
-                        nuevo_interes = nuevo_capital * (interes_porcentaje / 100) if nuevo_capital > 0 else 0
-                        nueva_cuota = nuevo_capital + nuevo_interes
+                        nueva_cuota = nuevo_capital + (nuevo_capital * (interes_porcentaje / 100)) if nuevo_capital > 0 else 0
                         nuevas_cuotas = cuotas_restantes
                         
                     else:  # total
-                        monto_pagado = capital_pendiente + interes_periodo
-                        interes_pagado = interes_periodo
-                        abono_capital = capital_pendiente
+                        monto_pagado = capital_actual + interes_correcto
+                        interes_pagado = interes_correcto
+                        abono_capital = capital_actual
                         nuevo_capital = 0
                         nueva_cuota = 0
                         nuevas_cuotas = 0
@@ -773,15 +775,15 @@ class ModuloPrestamos:
                     """, (nuevo_capital, nueva_cuota, nuevas_cuotas, 
                         nuevo_estado, fecha_proxima.strftime("%Y-%m-%d"), prestamo_actual_id))
                     
-                    # Mostrar resumen con el nuevo interés calculado
+                    # Mostrar resumen
                     resumen = f"✅ Pago registrado\n\n"
                     resumen += f"💰 Monto pagado: ${monto_pagado:,.2f}\n"
                     resumen += f"💸 Interés pagado: ${interes_pagado:,.2f}\n"
                     resumen += f"🏦 Abono a capital: ${abono_capital:,.2f}\n"
                     resumen += f"📊 Nuevo capital: ${nuevo_capital:,.2f}\n"
-                    if nuevo_capital > 0:
+                    if nueva_cuota > 0:
                         nuevo_interes_mostrar = nuevo_capital * (interes_porcentaje / 100)
-                        resumen += f"🔄 Nuevo interés próximo período: ${nuevo_interes_mostrar:,.2f}\n"
+                        resumen += f"🔄 Próximo interés: ${nuevo_interes_mostrar:,.2f}\n"
                         resumen += f"🔄 Nueva cuota: ${nueva_cuota:,.2f}\n"
                     
                     messagebox.showinfo("Éxito", resumen)
