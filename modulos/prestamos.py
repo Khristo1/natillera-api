@@ -402,14 +402,11 @@ class ModuloPrestamos:
                 tree.delete(item)
             
             query = """
-                SELECT p.id_prestamo, 
-                    CASE 
-                        WHEN p.es_externo = TRUE THEN p.nombre_externo 
-                        ELSE s.nombre || ' ' || s.apellido 
-                    END as solicitante,
+                SELECT p.id_prestamo, p.codigo_prestamo, 
+                    CASE WHEN p.es_externo = TRUE THEN p.nombre_externo ELSE s.nombre || ' ' || s.apellido END as solicitante,
                     p.monto_prestado, p.interes_mensual, p.cuota_mensual,
                     p.cuotas_totales, p.cuotas_restantes, p.saldo_pendiente, 
-                    p.estado, p.fecha_prestamo, p.codigo_prestamo
+                    p.estado, p.fecha_prestamo, p.id_socio
                 FROM prestamos p
                 LEFT JOIN socios s ON p.id_socio = s.id_socio
                 ORDER BY p.fecha_prestamo DESC
@@ -417,28 +414,26 @@ class ModuloPrestamos:
             prestamos = self.db.fetch_all(query)
             
             if not prestamos:
-                tree.insert("", tk.END, values=("No hay préstamos", "", "", "", "", "", "", "", "", ""))
+                tree.insert("", tk.END, values=("No hay préstamos", "", "", "", "", "", "", "", "", "", ""))
                 return
             
             for p in prestamos:
-                # Obtener nombre del solicitante
-                if p[9] == 1:  # es_externo
-                    solicitante = p[10] if p[10] else "Particular"
-                else:
-                    socio_query = "SELECT nombre || ' ' || apellido FROM socios WHERE id_socio = ?"
-                    socio = self.db.fetch_one(socio_query, (p[11],))
-                    solicitante = socio[0] if socio else "Socio eliminado"
+                # p[0] = id_prestamo
+                # p[1] = codigo_prestamo
+                # p[2] = solicitante
+                # p[3] = monto_prestado
+                # p[4] = interes_mensual
+                # p[5] = cuota_mensual
+                # p[6] = cuotas_totales
+                # p[7] = cuotas_restantes
+                # p[8] = saldo_pendiente
+                # p[9] = estado
+                # p[10] = fecha_prestamo
+                # p[11] = id_socio (este es el índice 11)
                 
-                monto = float(p[1]) if p[1] is not None else 0
-                interes = float(p[2]) if p[2] is not None else 0
-                cuota = float(p[3]) if p[3] is not None else 0
-                saldo = float(p[6]) if p[6] is not None else 0
-                valores = (p[0], solicitante, f"${monto:,.2f}", f"{interes}%", f"${cuota:,.2f}",
-                          p[4], p[5], f"${saldo:,.2f}", p[7], p[8])
-                
-                if p[7] == "activo":
+                if p[9] == "activo":
                     tree.insert("", tk.END, values=valores, tags=("activo",))
-                elif p[7] == "pagado":
+                elif p[9] == "pagado":
                     tree.insert("", tk.END, values=valores, tags=("pagado",))
                 else:
                     tree.insert("", tk.END, values=valores, tags=("vencido",))
@@ -446,7 +441,7 @@ class ModuloPrestamos:
             tree.tag_configure('activo', foreground='green')
             tree.tag_configure('pagado', foreground='blue')
             tree.tag_configure('vencido', foreground='red')
-        
+
         def mostrar_detalles(event=None):
             nonlocal prestamo_actual_id
             seleccion = tree.selection()
