@@ -894,26 +894,8 @@ class ModuloPrestamos:
         
         tree.bind("<<TreeviewSelect>>", mostrar_detalles)
         cargar_prestamos()
-
-        def enviar_recordatorio():
-            if not prestamo_actual_id:
-                messagebox.showwarning("Error", "Seleccione un préstamo")
-                return
-            
-            # Preguntar qué tipo de recordatorio enviar
-            tipo = messagebox.askquestion("Recordatorio", 
-                                        "¿Enviar recordatorio de PRÓXIMO VENCIMIENTO?\n"
-                                        "Seleccione 'No' para enviar recordatorio de VENCIDO.")
-            
-            if tipo == 'yes':
-                self.enviar_recordatorio_whatsapp(prestamo_actual_id, "proximo")
-            else:
-                self.enviar_recordatorio_whatsapp(prestamo_actual_id, "vencido")
-
-        # Agregar botón en btn_frame
-        ttk.Button(btn_frame, text="📱 Enviar WhatsApp", command=enviar_recordatorio, width=15).pack(side=tk.LEFT, padx=5)
     
-        def prestamos_vencidos(self):
+    def prestamos_vencidos(self):
         """Mostrar préstamos vencidos y próximos a vencer"""
         ventana = tk.Toplevel()
         ventana.title("Préstamos Vencidos y Próximos")
@@ -981,7 +963,6 @@ class ModuloPrestamos:
             from datetime import date
             hoy = date.today()
             
-            # Consulta para obtener préstamos activos con fecha de próximo pago
             query = """
                 SELECT p.id_prestamo, p.codigo_prestamo,
                     CASE WHEN p.es_externo = TRUE THEN p.nombre_externo 
@@ -1018,7 +999,6 @@ class ModuloPrestamos:
                     
                     filtro = combo_filtro.get()
                     
-                    # Determinar estado
                     if dias_vencido > 0:
                         estado_texto = "VENCIDO"
                         tag = "vencido"
@@ -1035,7 +1015,7 @@ class ModuloPrestamos:
                         else:
                             continue
                     else:
-                        continue  # No mostrar préstamos que no están próximos ni vencidos
+                        continue
                     
                     valores = (
                         p[0], p[1] if p[1] else "S/C", p[2], p[3] if p[3] else "No registrado",
@@ -1048,11 +1028,9 @@ class ModuloPrestamos:
                 except Exception as e:
                     print(f"Error procesando préstamo {p[0]}: {e}")
             
-            # Configurar colores
             tree.tag_configure('vencido', foreground='red', background='#FFEBEE')
             tree.tag_configure('proximo', foreground='orange', background='#FFF8E7')
             
-            # Actualizar resumen
             lbl_total_vencidos.config(text=f"Vencidos: {vencidos}")
             lbl_total_proximos.config(text=f"Próximos (3 días): {proximos}")
             lbl_total_saldo.config(text=f"Saldo total vencido: ${saldo_vencido:,.2f}")
@@ -1065,11 +1043,9 @@ class ModuloPrestamos:
             item = tree.item(seleccion[0])
             prestamo_id = item['values'][0]
             
-            # Determinar si es vencido o próximo
             estado_texto = item['values'][9]
             tipo = "vencido" if "VENCIDO" in estado_texto else "proximo"
             
-            # Llamar a la función de envío (asumiendo que existe)
             if hasattr(self, 'enviar_recordatorio_whatsapp'):
                 self.enviar_recordatorio_whatsapp(prestamo_id, tipo)
             else:
@@ -1083,74 +1059,7 @@ class ModuloPrestamos:
         ttk.Button(btn_frame, text="🔄 Actualizar", command=lambda: cargar_vencidos(), width=15).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="❌ Cerrar", command=ventana.destroy, width=15).pack(side=tk.RIGHT, padx=5)
         
-        # Cargar datos iniciales
         cargar_vencidos()
-
-    def enviar_recordatorio_whatsapp(self, prestamo_id, tipo="vencido"):
-        """Enviar recordatorio por WhatsApp"""
-        # Obtener datos del préstamo y del socio
-        query = """
-            SELECT p.id_prestamo, p.codigo_prestamo, p.saldo_pendiente, 
-                p.cuota_mensual, p.fecha_proximo_pago,
-                s.celular, s.nombre || ' ' || s.apellido as socio_nombre,
-                p.nombre_externo, p.celular_externo
-            FROM prestamos p
-            LEFT JOIN socios s ON p.id_socio = s.id_socio
-            WHERE p.id_prestamo = ?
-        """
-        prestamo = self.db.fetch_one(query, (prestamo_id,))
-        if not prestamo:
-            return False
-        
-        # Obtener teléfono (prioridad: socio o particular)
-        telefono = prestamo[5] if prestamo[5] else prestamo[8]
-        nombre = prestamo[6] if prestamo[6] else prestamo[7]
-        
-        if not telefono:
-            messagebox.showwarning("Error", "El cliente no tiene número de teléfono registrado")
-            return False
-        
-        # Formatear número (eliminar espacios, guiones, etc.)
-        telefono = ''.join(filter(str.isdigit, telefono))
-        if telefono.startswith('0'):
-            telefono = telefono[1:]
-        if not telefono.startswith('57'):
-            telefono = '57' + telefono
-        
-        # Crear mensaje según el tipo
-        fecha_venc = prestamo[4] if prestamo[4] else ""
-        saldo = float(prestamo[2]) if prestamo[2] else 0
-        cuota = float(prestamo[3]) if prestamo[3] else 0
-        codigo = prestamo[1] if prestamo[1] else "S/C"
-        
-        if tipo == "proximo":
-            mensaje = f"🔔 Natillera Familiar - RECORDATORIO\n\n"
-            mensaje += f"Estimado/a {nombre},\n\n"
-            mensaje += f"Le recordamos que su préstamo #{codigo} tiene una cuota por pagar de ${cuota:,.2f}.\n"
-            mensaje += f"📅 Fecha de vencimiento: {fecha_venc}\n"
-            mensaje += f"💰 Saldo pendiente: ${saldo:,.2f}\n\n"
-            mensaje += "Por favor, realice su pago a tiempo para evitar intereses adicionales.\n\n"
-            mensaje += "¡Gracias por su confianza!"
-        else:
-            mensaje = f"⚠️ Natillera Familiar - PRÉSTAMO VENCIDO ⚠️\n\n"
-            mensaje += f"Estimado/a {nombre},\n\n"
-            mensaje += f"Su préstamo #{codigo} se encuentra VENCIDO.\n"
-            mensaje += f"📅 Vencía el: {fecha_venc}\n"
-            mensaje += f"💰 Saldo pendiente: ${saldo:,.2f}\n\n"
-            mensaje += "Por favor, regularice su situación lo antes posible.\n"
-            mensaje += "Comuníquese con nosotros para acordar una forma de pago.\n\n"
-            mensaje += "¡Gracias por su atención!"
-        
-        # Codificar mensaje para URL
-        import urllib.parse
-        mensaje_codificado = urllib.parse.quote(mensaje)
-        
-        # Abrir WhatsApp Web
-        url = f"https://web.whatsapp.com/send?phone={telefono}&text={mensaje_codificado}"
-        import webbrowser
-        webbrowser.open(url)
-        
-        return True
 
     def registrar_pago(self):
         """Registrar pago de préstamo (acceso directo)"""
