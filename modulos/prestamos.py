@@ -400,38 +400,11 @@ class ModuloPrestamos:
                 # Calcular interés del período actual (sobre saldo pendiente)
                 interes_periodo = saldo_actual * (interes_porcentaje / 100)
                 
-                # ========== FUNCIONES DE FORMATEO ==========
-                def formatear_miles(entry):
-                    def _formatear(event=None):
-                        try:
-                            texto = entry.get()
-                            if texto:
-                                limpio = texto.replace('$', '').replace(',', '').strip()
-                                if limpio and limpio.replace('.', '', 1).isdigit():
-                                    num = float(limpio)
-                                    entry.delete(0, tk.END)
-                                    entry.insert(0, f"{num:,.0f}".replace(',', ','))
-                        except:
-                            pass
-                    return _formatear
-                
-                def quitar_formato(entry):
-                    def _quitar(event=None):
-                        try:
-                            texto = entry.get()
-                            if texto:
-                                limpio = texto.replace('$', '').replace(',', '').strip()
-                                entry.delete(0, tk.END)
-                                entry.insert(0, limpio)
-                        except:
-                            pass
-                    return _quitar
-                
-                # ========== VENTANA DE PAGO ==========
+                # ========== VENTANA DE PAGO MEJORADA ==========
                 pago_win = tk.Toplevel(ventana)
                 pago_win.title("Registrar Pago")
-                pago_win.geometry("600x750")
-                pago_win.minsize(550, 650)
+                pago_win.geometry("550x650")
+                pago_win.minsize(500, 550)
                 pago_win.transient()
                 pago_win.grab_set()
                 
@@ -459,13 +432,11 @@ class ModuloPrestamos:
                 info_frame = ttk.LabelFrame(main_frame_pago, text="Información del Préstamo", padding="10")
                 info_frame.pack(fill=tk.X, pady=5)
                 
-                lbl_saldo_actual = tk.Label(info_frame, text=f"Saldo actual: ${saldo_actual:,.2f}", 
-                                            font=("Arial", 12, "bold"), fg="red")
-                lbl_saldo_actual.pack(anchor=tk.W)
-                tk.Label(info_frame, text=f"Cuota actual: ${cuota_actual:,.2f}").pack(anchor=tk.W, pady=2)
-                lbl_interes_periodo = tk.Label(info_frame, text=f"Interés del período ({interes_porcentaje}%): ${interes_periodo:,.2f}", 
-                                            font=("Arial", 10), fg="blue")
-                lbl_interes_periodo.pack(anchor=tk.W)
+                tk.Label(info_frame, text=f"Capital original: ${capital_original:,.2f}", font=("Arial", 10)).pack(anchor=tk.W)
+                tk.Label(info_frame, text=f"Saldo actual: ${saldo_actual:,.2f}", font=("Arial", 12, "bold"), fg="red").pack(anchor=tk.W)
+                tk.Label(info_frame, text=f"Cuota actual: ${cuota_actual:,.2f}").pack(anchor=tk.W)
+                tk.Label(info_frame, text=f"Interés del período ({interes_porcentaje}%): ${interes_periodo:,.2f}", 
+                        font=("Arial", 10), fg="blue").pack(anchor=tk.W)
                 tk.Label(info_frame, text=f"Cuotas restantes: {cuotas_restantes}").pack(anchor=tk.W)
                 tk.Label(info_frame, text=f"Próxima cuota vence: {fecha_prox_pago}").pack(anchor=tk.W)
                 
@@ -476,9 +447,9 @@ class ModuloPrestamos:
                 tipo_pago_var = tk.StringVar(value="normal")
                 ttk.Radiobutton(tipo_frame, text="Pago normal (cuota completa)", 
                             variable=tipo_pago_var, value="normal").pack(anchor=tk.W, pady=2)
-                ttk.Radiobutton(tipo_frame, text="Pago parcial (abono a capital)", 
+                ttk.Radiobutton(tipo_frame, text="Pago parcial (abono a capital + intereses separados)", 
                             variable=tipo_pago_var, value="parcial").pack(anchor=tk.W, pady=2)
-                ttk.Radiobutton(tipo_frame, text="Pago total (liquidar todo)", 
+                ttk.Radiobutton(tipo_frame, text="Pago total (liquidar todo el préstamo)", 
                             variable=tipo_pago_var, value="total").pack(anchor=tk.W, pady=2)
                 
                 # ========== CAMPOS DE PAGO ==========
@@ -491,22 +462,19 @@ class ModuloPrestamos:
                 entry_fecha.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
                 entry_fecha.insert(0, datetime.now().strftime("%Y-%m-%d"))
                 
-                # Abono a capital (principal)
-                ttk.Label(pago_frame, text="Abono a capital ($):").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
-                entry_abono = ttk.Entry(pago_frame, width=20)
-                entry_abono.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
-                entry_abono.insert(0, "0")
+                # Monto total a pagar
+                ttk.Label(pago_frame, text="Monto total ($):").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
+                entry_monto_total = ttk.Entry(pago_frame, width=20)
+                entry_monto_total.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
                 
-                # Pago de intereses
-                ttk.Label(pago_frame, text="Pago de intereses ($):").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
-                entry_interes_pagado = ttk.Entry(pago_frame, width=20)
-                entry_interes_pagado.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
-                entry_interes_pagado.insert(0, "0")
+                # Para pago parcial: abono a capital e intereses separados
+                ttk.Label(pago_frame, text="Abono a capital ($):").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+                entry_abono_capital = ttk.Entry(pago_frame, width=20)
+                entry_abono_capital.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
                 
-                # Monto total (calculado automáticamente)
-                ttk.Label(pago_frame, text="Monto total a pagar ($):").grid(row=3, column=0, padx=5, pady=5, sticky=tk.W)
-                entry_total = ttk.Entry(pago_frame, width=20, state="readonly")
-                entry_total.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
+                ttk.Label(pago_frame, text="Pago de intereses ($):").grid(row=3, column=0, padx=5, pady=5, sticky=tk.W)
+                entry_pago_interes = ttk.Entry(pago_frame, width=20)
+                entry_pago_interes.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
                 
                 # Observaciones
                 ttk.Label(pago_frame, text="Observaciones:").grid(row=4, column=0, padx=5, pady=5, sticky=tk.W)
@@ -524,81 +492,53 @@ class ModuloPrestamos:
                 lbl_desglose = tk.Label(pago_frame, text="", font=("Arial", 9), justify=tk.LEFT, fg="green")
                 lbl_desglose.grid(row=6, column=0, columnspan=2, pady=10)
                 
-                # ========== FUNCIONES ==========
-                def actualizar_totales(*args):
-                    try:
-                        tipo = tipo_pago_var.get()
-                        if tipo == "normal":
-                            entry_abono.config(state="disabled")
-                            entry_interes_pagado.config(state="disabled")
-                            total = cuota_actual
-                            entry_total.config(state="normal")
-                            entry_total.delete(0, tk.END)
-                            entry_total.insert(0, f"{total:,.0f}")
-                            entry_total.config(state="readonly")
-                            lbl_desglose.config(text=f"💡 Pago de cuota normal:\n"
-                                                    f"   Incluye intereses por ${interes_periodo:,.2f}\n"
-                                                    f"   Abono a capital: ${total - interes_periodo:,.2f}")
-                        elif tipo == "total":
-                            entry_abono.config(state="disabled")
-                            entry_interes_pagado.config(state="disabled")
-                            total = saldo_actual
-                            entry_total.config(state="normal")
-                            entry_total.delete(0, tk.END)
-                            entry_total.insert(0, f"{total:,.0f}")
-                            entry_total.config(state="readonly")
-                            lbl_desglose.config(text=f"💡 Pago total:\n"
-                                                    f"   Se liquidará el préstamo completamente")
-                        else:  # parcial
-                            entry_abono.config(state="normal")
-                            entry_interes_pagado.config(state="normal")
-                            try:
-                                abono = float(entry_abono.get().replace(',', '')) if entry_abono.get() else 0
-                                interes_pagado = float(entry_interes_pagado.get().replace(',', '')) if entry_interes_pagado.get() else 0
-                                total = abono + interes_pagado
-                                entry_total.config(state="normal")
-                                entry_total.delete(0, tk.END)
-                                entry_total.insert(0, f"{total:,.0f}")
-                                entry_total.config(state="readonly")
-                                
-                                # Calcular nuevo saldo y nuevos intereses
-                                nuevo_saldo = saldo_actual - abono
-                                if nuevo_saldo < 0:
-                                    nuevo_saldo = 0
-                                nuevo_interes = nuevo_saldo * (interes_porcentaje / 100)
-                                
-                                lbl_desglose.config(text=f"💡 Pago parcial:\n"
-                                                        f"   Abono a capital: ${abono:,.2f}\n"
-                                                        f"   Interés pagado: ${interes_pagado:,.2f}\n"
-                                                        f"   Nuevo saldo: ${nuevo_saldo:,.2f}\n"
-                                                        f"   Interés próximo período: ${nuevo_interes:,.2f}")
-                            except:
-                                pass
-                    except:
-                        pass
+                # ========== FUNCIONES DE ACTUALIZACIÓN ==========
+                def actualizar_campos_por_tipo(*args):
+                    tipo = tipo_pago_var.get()
+                    if tipo == "normal":
+                        entry_monto_total.config(state="normal")
+                        entry_abono_capital.config(state="disabled")
+                        entry_pago_interes.config(state="disabled")
+                        entry_monto_total.delete(0, tk.END)
+                        entry_monto_total.insert(0, f"{cuota_actual:,.0f}".replace(',', ''))
+                        lbl_desglose.config(text=f"💡 Pago de cuota normal: ${cuota_actual:,.2f}\n"
+                                                f"   Interés incluido: ${interes_periodo:,.2f}\n"
+                                                f"   Abono a capital: ${cuota_actual - interes_periodo:,.2f}")
+                    elif tipo == "total":
+                        entry_monto_total.config(state="normal")
+                        entry_abono_capital.config(state="disabled")
+                        entry_pago_interes.config(state="disabled")
+                        entry_monto_total.delete(0, tk.END)
+                        entry_monto_total.insert(0, f"{saldo_actual:,.0f}".replace(',', ''))
+                        lbl_desglose.config(text=f"💡 Pago total: ${saldo_actual:,.2f}\n"
+                                                f"   Se liquidará completamente el préstamo")
+                    else:  # parcial
+                        entry_monto_total.config(state="disabled")
+                        entry_abono_capital.config(state="normal")
+                        entry_pago_interes.config(state="normal")
+                        entry_monto_total.delete(0, tk.END)
+                        lbl_desglose.config(text="💡 Ingrese abono a capital y/o pago de intereses\n"
+                                                "   El abono reduce el saldo para el próximo período")
                 
-                def actualizar_con_formato(entry, event=None):
-                    try:
-                        texto = entry.get()
-                        if texto:
-                            limpio = texto.replace('$', '').replace(',', '').strip()
-                            if limpio and limpio.replace('.', '', 1).isdigit():
-                                num = float(limpio)
-                                entry.delete(0, tk.END)
-                                entry.insert(0, f"{num:,.0f}")
-                    except:
-                        pass
-                    actualizar_totales()
+                def calcular_monto_total(*args):
+                    tipo = tipo_pago_var.get()
+                    if tipo == "parcial":
+                        try:
+                            abono = float(entry_abono_capital.get().replace(',', '')) if entry_abono_capital.get() else 0
+                            interes_pagado = float(entry_pago_interes.get().replace(',', '')) if entry_pago_interes.get() else 0
+                            total = abono + interes_pagado
+                            if total > 0:
+                                entry_monto_total.delete(0, tk.END)
+                                entry_monto_total.insert(0, f"{total:,.0f}".replace(',', ''))
+                            else:
+                                entry_monto_total.delete(0, tk.END)
+                        except:
+                            pass
                 
                 # Vincular eventos
-                tipo_pago_var.trace_add('write', lambda *args: actualizar_totales())
-                entry_abono.bind("<KeyRelease>", lambda e: actualizar_con_formato(entry_abono))
-                entry_interes_pagado.bind("<KeyRelease>", lambda e: actualizar_con_formato(entry_interes_pagado))
-                
-                # Aplicar formato al perder/enfocar
-                for entry in [entry_abono, entry_interes_pagado]:
-                    entry.bind('<FocusOut>', lambda e, ent=entry: actualizar_con_formato(ent))
-                    entry.bind('<FocusIn>', lambda e, ent=entry: ent.delete(0, tk.END))
+                tipo_pago_var.trace_add('write', actualizar_campos_por_tipo)
+                entry_abono_capital.bind("<KeyRelease>", calcular_monto_total)
+                entry_pago_interes.bind("<KeyRelease>", calcular_monto_total)
                 
                 def guardar_pago():
                     try:
@@ -607,14 +547,11 @@ class ModuloPrestamos:
                         forma_pago = combo_forma.get()
                         observaciones = text_obs.get("1.0", tk.END).strip()
                         
-                        # Limpiar formato de los montos
-                        abono_limpio = entry_abono.get().replace(',', '') if entry_abono.get() else "0"
-                        interes_limpio = entry_interes_pagado.get().replace(',', '') if entry_interes_pagado.get() else "0"
-                        abono_capital = float(abono_limpio) if abono_limpio else 0
-                        interes_pagado = float(interes_limpio) if interes_limpio else 0
-                        
                         if tipo_pago == "normal":
-                            monto_pagado = cuota_actual
+                            monto_pagado = float(entry_monto_total.get().replace(',', ''))
+                            if monto_pagado < cuota_actual:
+                                messagebox.showwarning("Error", f"El pago normal debe ser al menos ${cuota_actual:,.2f}")
+                                return
                             interes_pagado = interes_periodo
                             abono_capital = monto_pagado - interes_pagado
                             nuevo_saldo = saldo_actual - abono_capital
@@ -622,35 +559,36 @@ class ModuloPrestamos:
                             nueva_cuota = cuota_actual
                             
                         elif tipo_pago == "total":
-                            monto_pagado = saldo_actual
-                            abono_capital = monto_pagado
+                            monto_pagado = float(entry_monto_total.get().replace(',', ''))
+                            if monto_pagado < saldo_actual:
+                                messagebox.showwarning("Error", f"Para liquidar debe pagar ${saldo_actual:,.2f}")
+                                return
                             interes_pagado = 0
+                            abono_capital = monto_pagado
                             nuevo_saldo = 0
                             nuevas_cuotas_restantes = 0
                             nueva_cuota = 0
                             
                         else:  # parcial
-                            if abono_capital == 0 and interes_pagado == 0:
+                            abono_capital = float(entry_abono_capital.get().replace(',', '')) if entry_abono_capital.get() else 0
+                            interes_pagado = float(entry_pago_interes.get().replace(',', '')) if entry_pago_interes.get() else 0
+                            monto_pagado = abono_capital + interes_pagado
+                            if monto_pagado <= 0:
                                 messagebox.showwarning("Error", "Ingrese al menos un valor para abono o intereses")
                                 return
-                            
-                            monto_pagado = abono_capital + interes_pagado
                             nuevo_saldo = saldo_actual - abono_capital
                             if nuevo_saldo < 0:
                                 nuevo_saldo = 0
                             nuevas_cuotas_restantes = cuotas_restantes
-                            
-                            # RECALCULAR NUEVA CUOTA BASADA EN EL NUEVO SALDO
-                            if nuevo_saldo > 0:
+                            nueva_cuota = cuota_actual
+                            # Si el saldo cambió, recalculamos la cuota para el próximo período
+                            if nuevo_saldo > 0 and nuevas_cuotas_restantes > 0:
                                 nuevo_interes_periodo = nuevo_saldo * (interes_porcentaje / 100)
-                                # Cuota = (saldo / cuotas restantes) + interés del nuevo saldo
                                 nueva_cuota = (nuevo_saldo / nuevas_cuotas_restantes) + nuevo_interes_periodo
-                            else:
-                                nueva_cuota = 0
                         
                         nuevo_estado = "pagado" if nuevo_saldo <= 0 else "activo"
                         
-                        # Calcular nueva fecha de próxima cuota
+                        # Calcular nueva fecha de próxima cuota (30 días después)
                         fecha_actual = datetime.strptime(fecha_pago, "%Y-%m-%d")
                         fecha_proxima = fecha_actual + timedelta(days=30)
                         
@@ -680,8 +618,6 @@ class ModuloPrestamos:
                         resumen += f"🏦 Abono a capital: ${abono_capital:,.2f}\n"
                         resumen += f"💵 Forma de pago: {forma_pago}\n"
                         resumen += f"📊 Nuevo saldo: ${nuevo_saldo:,.2f}\n"
-                        if nueva_cuota > 0:
-                            resumen += f"🔄 Nueva cuota: ${nueva_cuota:,.2f}\n"
                         if observaciones:
                             resumen += f"📝 Observaciones: {observaciones}"
                         
@@ -700,8 +636,8 @@ class ModuloPrestamos:
                 ttk.Button(btn_frame_pago, text="✅ REGISTRAR PAGO", command=guardar_pago, width=18).pack(side=tk.LEFT, padx=10)
                 ttk.Button(btn_frame_pago, text="❌ CANCELAR", command=pago_win.destroy, width=18).pack(side=tk.LEFT, padx=10)
                 
-                # Inicializar
-                actualizar_totales()
+                # Inicializar campos según tipo
+                actualizar_campos_por_tipo()
 
             def modificar_prestamo():
                 nonlocal prestamo_actual_id
