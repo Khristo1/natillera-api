@@ -493,10 +493,30 @@ class ModuloPrestamos:
                 return
             
             # Obtener datos actuales del préstamo
-            # Obtener datos actuales del préstamo
             q = """SELECT saldo_pendiente, cuota_mensual, interes_mensual, 
                         monto_prestado, cuotas_restantes, fecha_proximo_pago
                 FROM prestamos WHERE id_prestamo = ?"""
+            prestamo = self.db.fetch_one(q, (prestamo_actual_id,))
+            if not prestamo:
+                messagebox.showerror("Error", "Préstamo no encontrado")
+                return
+
+            saldo_actual = float(prestamo[0]) if prestamo[0] else 0
+            cuota_actual = float(prestamo[1]) if prestamo[1] else 0
+            interes_porcentaje = float(prestamo[2]) if prestamo[2] else 0
+            capital_original = float(prestamo[3]) if prestamo[3] else 0
+            cuotas_restantes = int(prestamo[4]) if prestamo[4] else 0
+            fecha_prox_pago = prestamo[5] if prestamo[5] else ""
+
+            # === DEPURACIÓN ===
+            print("=" * 50)
+            print("DATOS DEL PRÉSTAMO:")
+            print(f"saldo_pendiente (BD): {saldo_actual}")
+            print(f"cuota_mensual: {cuota_actual}")
+            print(f"interes_mensual: {interes_porcentaje}")
+            print(f"monto_prestado: {capital_original}")
+            print(f"cuotas_restantes: {cuotas_restantes}")
+            print("=" * 50)
             prestamo = self.db.fetch_one(q, (prestamo_actual_id,))
             if not prestamo:
                 messagebox.showerror("Error", "Préstamo no encontrado")
@@ -764,6 +784,20 @@ class ModuloPrestamos:
                         nueva_cuota = 0
                         
                     else:  # parcial
+                        print("=== PAGO PARCIAL ===")
+                        print(f"abono_capital ingresado: {abono_capital}")
+                        print(f"interes_pagado ingresado: {interes_pagado}")
+                        print(f"saldo_actual antes: {saldo_actual}")
+                        
+                        # Calcular nuevo saldo
+                        nuevo_saldo = saldo_actual - abono_capital
+                        print(f"nuevo_saldo calculado: {nuevo_saldo}")
+                        
+                        if nuevo_saldo > 0:
+                            nuevo_interes = nuevo_saldo * (interes_porcentaje / 100)
+                            nueva_cuota = nuevo_saldo + nuevo_interes
+                            print(f"nuevo_interes: {nuevo_interes}")
+                            print(f"nueva_cuota: {nueva_cuota}")
                         if abono_capital == 0 and interes_pagado == 0:
                             messagebox.showwarning("Error", "Ingrese al menos un valor para abono o intereses")
                             return
